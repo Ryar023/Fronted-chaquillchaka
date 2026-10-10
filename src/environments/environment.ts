@@ -1,5 +1,5 @@
 export const environment = {
   production: false,
-  apiUrl: 'http://localhost:3000/api',
+  apiUrl: 'https://backend-chaquillchaka.onrender.com/api',
   whatsappNumber: '51984992475'
 };
