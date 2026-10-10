@@ -1,0 +1,18 @@
+Coloca aquí tus fotografías para el sitio.
+
+Las fotos que usa actualmente la aplicación son:
+- chaquillchaja-logo.png: logotipo de navegación.
+- slide_PatioDía1.jpg: portada y sección Nosotros.
+- Plaza_de_Cusco_Allison_Bellido.jpg: presentación de Cusco.
+- habitacion-simple.jpg: habitación simple.
+- habitacion-doble.jpg: habitación doble.
+- habitacion-matrimonial.jpg: habitación matrimonial.
+- Habitacion familiar(2).jpg: habitación familiar.
+- Vista-Comedorvista 2.jpg: patio y áreas comunes; aparece en el slider de fotos.
+- Zona de desayuno 1.jpg: comedor; aparece en el slider de fotos.
+- Desayuno 1.jpg y Desayuno 2.jpg: desayuno continental; aparecen en el slider.
+- slide_habitacion.jpg: imagen alternativa para la página de reserva.
+
+Puedes reemplazar estos archivos conservando sus nombres para actualizar las
+fotos sin cambiar código. Para las habitaciones, las rutas también están
+guardadas en MongoDB; los nombres existentes se asocian por el tipo de cuarto.
