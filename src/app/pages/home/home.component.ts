@@ -63,7 +63,7 @@ import { RoomService } from '../../services/room.service';
     </section>
   `,
   styles: [`
-    .hero { position:relative; min-height:610px; display:flex; align-items:center; color:white; background:#263c35 url('https://images.unsplash.com/photo-1531065208531-4036c0dba3ca?auto=format&fit=crop&w=2200&q=85') center 52%/cover no-repeat; }
+    .hero { position:relative; min-height:610px; display:flex; align-items:center; color:white; background:#263c35 url('/assets/images/Slide2-Vista-Piso1-comedor.jpg') center 52%/cover no-repeat; }
     .hero-overlay { position:absolute; inset:0; background:linear-gradient(90deg,#111f1bdc 0%,#111f1ba8 49%,#111f1b18 100%); }
     .hero-content { position:relative; padding-block:80px; }
     .hero h1 { max-width:780px; margin:17px 0; font-family:Georgia,"Times New Roman",serif; font-size:clamp(3rem,7.6vw,6.3rem); font-weight:500; line-height:.99; letter-spacing:-.045em; }
