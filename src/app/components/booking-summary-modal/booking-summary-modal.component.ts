@@ -8,7 +8,7 @@ import { environment } from '../../../environments/environment';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="modal-backdrop" (click)="dismiss()">
+    <div class="modal-backdrop" (click)="dismiss()" (keydown.escape)="dismiss()">
       <section class="modal surface-card" role="dialog" aria-modal="true" aria-labelledby="booking-confirmed-title" (click)="$event.stopPropagation()">
         <button type="button" class="close-button" aria-label="Cerrar resumen y volver al inicio" (click)="dismiss()">×</button>
         <span class="success-icon" aria-hidden="true">✓</span>
@@ -39,7 +39,7 @@ import { environment } from '../../../environments/environment';
   styles: [`
     .modal-backdrop { position:fixed; inset:0; z-index:60; display:grid; overflow-y:auto; place-items:center; background:#101b16b8; padding:20px; }
     .modal { position:relative; width:min(100%,520px); padding:clamp(24px,5vw,42px); }
-    .close-button { position:absolute; top:14px; right:16px; border:0; background:transparent; color:#47534c; font-size:28px; cursor:pointer; }
+    .close-button { position:absolute; top:14px; right:16px; width:44px; height:44px; border:0; background:transparent; color:#47534c; font-size:28px; cursor:pointer; }
     .success-icon { display:grid; width:48px; height:48px; place-items:center; border-radius:50%; background:#e8f2eb; color:#183b32; font-size:24px; font-weight:800; }
     .details { margin:24px 0; border-top:1px solid #e6e8e2; }
     .details div { display:flex; justify-content:space-between; gap:16px; border-bottom:1px solid #e6e8e2; padding:12px 0; font-size:14px; }

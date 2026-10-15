@@ -39,43 +39,43 @@ import { RoomService } from '../../services/room.service';
         </p>
         <form [formGroup]="bookingForm" (ngSubmit)="submit()" novalidate>
           <div class="grid gap-x-5 gap-y-5 sm:grid-cols-2">
-            <label class="field sm:col-span-2">
+            <label class="field sm:col-span-2" for="booking-name">
               <span>Nombre completo <span aria-hidden="true">*</span></span>
-              <input class="form-control" type="text" formControlName="name" autocomplete="name" placeholder="Como aparece en tu documento" [attr.aria-invalid]="showError('name')" aria-describedby="name-error">
+              <input id="booking-name" class="form-control" type="text" formControlName="name" autocomplete="name" placeholder="Como aparece en tu documento" [attr.aria-invalid]="showError('name')" aria-describedby="name-error" aria-required="true">
               <small *ngIf="showError('name')" id="name-error" class="field-error">Ingresa tu nombre completo (al menos 2 caracteres).</small>
             </label>
-            <label class="field">
+            <label class="field" for="booking-email">
               <span>Correo electrónico <span aria-hidden="true">*</span></span>
-              <input class="form-control" type="email" formControlName="email" autocomplete="email" placeholder="tu@correo.com" [attr.aria-invalid]="showError('email')" aria-describedby="email-error">
+              <input id="booking-email" class="form-control" type="email" formControlName="email" autocomplete="email" placeholder="tu@correo.com" [attr.aria-invalid]="showError('email')" aria-describedby="email-error" aria-required="true">
               <small *ngIf="showError('email')" id="email-error" class="field-error">Ingresa un correo electrónico válido.</small>
             </label>
-            <label class="field">
+            <label class="field" for="booking-phone">
               <span>Teléfono / WhatsApp <span aria-hidden="true">*</span></span>
-              <input class="form-control" type="tel" formControlName="phone" autocomplete="tel" placeholder="+51 987 654 321" [attr.aria-invalid]="showError('phone')" aria-describedby="phone-error">
+              <input id="booking-phone" class="form-control" type="tel" formControlName="phone" autocomplete="tel" placeholder="+51 987 654 321" [attr.aria-invalid]="showError('phone')" aria-describedby="phone-error" aria-required="true">
               <small *ngIf="showError('phone')" id="phone-error" class="field-error">Ingresa un teléfono válido.</small>
             </label>
-            <label class="field sm:col-span-2">
+            <label class="field sm:col-span-2" for="booking-room">
               <span>Habitación <span aria-hidden="true">*</span></span>
-              <select class="form-control" formControlName="roomId" [disabled]="loadingRooms || !!roomsError || rooms.length === 0" [attr.aria-invalid]="showError('roomId')" aria-describedby="room-error">
+              <select id="booking-room" class="form-control" formControlName="roomId" [disabled]="loadingRooms || !!roomsError || rooms.length === 0" [attr.aria-invalid]="showError('roomId')" aria-describedby="room-error" aria-required="true">
                 <option value="">{{ loadingRooms ? 'Cargando habitaciones…' : roomsError ? 'No se pudieron cargar las habitaciones' : rooms.length ? 'Selecciona una habitación' : 'No hay habitaciones disponibles' }}</option>
                 <option *ngFor="let room of rooms" [value]="room._id">{{ room.name }} · S/ {{ room.pricePen }} por noche · {{ room.capacity }} huésped(es)</option>
               </select>
               <small *ngIf="showError('roomId')" id="room-error" class="field-error">Selecciona una habitación disponible.</small>
             </label>
-            <label class="field">
+            <label class="field" for="booking-checkin">
               <span>Fecha de llegada <span aria-hidden="true">*</span></span>
-              <input class="form-control" type="date" formControlName="checkIn" [min]="today" (change)="onCheckInChange()" [attr.aria-invalid]="showError('checkIn') || hasPastCheckInError" aria-describedby="checkin-error">
+              <input id="booking-checkin" class="form-control" type="date" formControlName="checkIn" [min]="today" (change)="onCheckInChange()" [attr.aria-invalid]="showError('checkIn') || hasPastCheckInError" aria-describedby="checkin-error" aria-required="true">
               <small *ngIf="showError('checkIn') || hasPastCheckInError" id="checkin-error" class="field-error">{{ hasPastCheckInError ? 'La llegada no puede estar en el pasado.' : 'Elige una fecha de llegada válida desde hoy.' }}</small>
             </label>
-            <label class="field">
+            <label class="field" for="booking-checkout">
               <span>Fecha de salida <span aria-hidden="true">*</span></span>
-              <input class="form-control" type="date" formControlName="checkOut" [min]="checkOutMinimum" (change)="bookingForm.updateValueAndValidity()" [attr.aria-invalid]="showError('checkOut') || hasDateOrderError" aria-describedby="checkout-error">
+              <input id="booking-checkout" class="form-control" type="date" formControlName="checkOut" [min]="checkOutMinimum" (change)="bookingForm.updateValueAndValidity()" [attr.aria-invalid]="showError('checkOut') || hasDateOrderError" aria-describedby="checkout-error" aria-required="true">
               <small *ngIf="showError('checkOut') && !hasDateOrderError" id="checkout-error" class="field-error">Elige una fecha de salida.</small>
               <small *ngIf="hasDateOrderError" id="checkout-error" class="field-error">La salida debe ser posterior a la llegada.</small>
             </label>
-            <label class="field">
+            <label class="field" for="booking-guests">
               <span>Número de huéspedes <span aria-hidden="true">*</span></span>
-              <input class="form-control" type="number" formControlName="guests" min="1" [max]="selectedRoom?.capacity || 20" step="1" [attr.aria-invalid]="showError('guests')" aria-describedby="guests-error">
+              <input id="booking-guests" class="form-control" type="number" formControlName="guests" min="1" [max]="selectedRoom?.capacity || 20" step="1" [attr.aria-invalid]="showError('guests')" aria-describedby="guests-error" aria-required="true">
               <small *ngIf="showError('guests')" id="guests-error" class="field-error">{{ selectedRoom ? 'Esta habitación admite hasta ' + selectedRoom.capacity + ' huéspedes.' : 'Ingresa al menos 1 huésped.' }}</small>
             </label>
             <fieldset class="payment-options sm:col-span-2">
@@ -112,7 +112,7 @@ import { RoomService } from '../../services/room.service';
             <p class="estimate-note">Estimado informativo. Precio y disponibilidad se confirman al enviar la solicitud.</p>
           </section>
           <p class="mt-6 rounded bg-stone-50 p-4 text-xs leading-5 text-stone-600">El servidor vuelve a comprobar la disponibilidad antes de registrar tu reserva. La selección de pago es una preferencia, no un cobro en línea. Después podrás imprimir o guardar tu comprobante; escribirnos por WhatsApp es opcional.</p>
-          <p *ngIf="serverError" class="mt-4 rounded border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900" role="alert">{{ serverError }}</p>
+          <p *ngIf="serverError" class="mt-4 rounded border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900" role="alert" aria-live="assertive">{{ serverError }}</p>
           <button class="primary-button mt-5 w-full" type="submit" [disabled]="submitting || loadingRooms || rooms.length === 0">
             {{ submitting ? 'Verificando disponibilidad…' : 'Confirmar Reserva' }}
           </button>

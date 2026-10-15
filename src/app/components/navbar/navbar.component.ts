@@ -39,7 +39,7 @@ import { RouterModule } from '@angular/router';
     .site-nav a:hover,.site-nav a.active { color:#a84e2c; }
     .site-nav .nav-booking { border-radius:4px; background:#183b32; padding:12px 15px; color:white; }
     .site-nav .nav-booking:hover { background:#245447; color:white; }
-    .menu-toggle { display:none; border:0; background:transparent; padding:9px; }
+    .menu-toggle { display:none; width:44px; height:44px; border:0; background:transparent; padding:9px; cursor:pointer; }
     .menu-toggle span { display:block; width:23px; height:2px; margin:5px; background:#183b32; }
     .skip-link { position:absolute; top:-60px; left:12px; z-index:60; border-radius:4px; background:#183b32; padding:10px 14px; color:#fff; }
     .skip-link:focus { top:8px; }
@@ -48,7 +48,7 @@ import { RouterModule } from '@angular/router';
       .menu-toggle { display:block; }
       .site-nav { position:absolute; top:75px; right:0; left:0; display:none; align-items:stretch; gap:0; border-bottom:1px solid #e5e7eb; background:white; padding:8px 20px 18px; box-shadow:0 16px 22px #17221f12; }
       .site-nav.is-open { display:flex; flex-direction:column; }
-      .site-nav a { padding:13px 8px; }
+      .site-nav a { min-height:44px; display:flex; align-items:center; padding:10px 8px; }
       .site-nav .nav-booking { margin-top:6px; text-align:center; }
     }
   `]

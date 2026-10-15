@@ -8,13 +8,13 @@ import { Room } from '../../models/room.interface';
   standalone: true,
   imports: [CommonModule, RouterModule],
   template: `
-    <article class="surface-card overflow-hidden">
+    <article class="surface-card overflow-hidden" [attr.aria-labelledby]="'room-title-' + room._id">
       <div class="room-image-wrap">
         <button class="room-image-button" type="button" (click)="openGallery()" [attr.aria-label]="'Ver fotos y detalles de ' + room.name">
           <img
             class="room-image"
             [src]="roomImageUrl"
-            [alt]="'Interior de ' + room.name"
+            [alt]="room.name + ', habitación con capacidad para ' + room.capacity + ' personas'"
             loading="lazy"
             (click)="openGallery()"
             (error)="useFallback($event)">
@@ -25,7 +25,7 @@ import { Room } from '../../models/room.interface';
       <div class="p-6">
         <div class="flex items-start justify-between gap-3">
           <div>
-            <h3 class="m-0 font-serif text-2xl font-medium text-forest">{{ room.name }}</h3>
+            <h3 class="m-0 font-serif text-2xl font-medium text-forest" [id]="'room-title-' + room._id">{{ room.name }}</h3>
             <p class="mt-2 text-sm leading-6 text-stone-600">{{ room.description }}</p>
           </div>
           <span class="capacity" [attr.aria-label]="'Capacidad: ' + room.capacity + ' personas'">♧ {{ room.capacity }}</span>
@@ -106,7 +106,7 @@ import { Room } from '../../models/room.interface';
     .room-image-button:hover .room-image { transform:scale(1.035); }
     .view-photos { position:absolute; right:13px; bottom:13px; border-radius:4px; background:#17221fd9; padding:8px 11px; color:#fff; font-size:12px; font-weight:700; }
     .room-type { position:absolute; left:16px; bottom:16px; border-radius:3px; background:#fff; padding:7px 11px; color:#183b32; font-size:12px; font-weight:750; pointer-events:none; }
-    .details-button { display:inline-flex; align-items:center; gap:8px; margin-top:16px; border:1px solid #183b32; border-radius:4px; background:#fff; padding:9px 12px; color:#183b32; font-size:13px; font-weight:700; cursor:pointer; }
+    .details-button { display:inline-flex; min-height:44px; align-items:center; gap:8px; margin-top:16px; border:1px solid #183b32; border-radius:4px; background:#fff; padding:9px 12px; color:#183b32; font-size:13px; font-weight:700; cursor:pointer; }
     .details-button:hover { background:#edf1ec; }
     .capacity { flex:none; border-radius:99px; background:#edf1ec; padding:6px 9px; color:#183b32; font-size:12px; font-weight:700; }
     .service-badge { list-style:none; border:1px solid #e4e7e2; border-radius:99px; padding:5px 9px; color:#4b5750; font-size:11px; }

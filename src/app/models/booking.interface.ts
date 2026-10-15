@@ -24,7 +24,7 @@ export interface Booking {
   totalUsd: number;
   paymentMethod: 'yape' | 'plin' | 'card' | 'cash';
   paymentCurrency: 'PEN' | 'USD';
-  status: 'confirmed' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'cancelled';
 }
 
 export interface ApiResponse<T> {
