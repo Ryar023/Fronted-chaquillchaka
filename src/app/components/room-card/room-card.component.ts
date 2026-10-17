@@ -1,7 +1,8 @@
-import { Component, HostListener, Input } from '@angular/core';
+import { Component, HostListener, Input, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { Room } from '../../models/room.interface';
+import { Room, RoomOccupancy } from '../../models/room.interface';
+import { RoomService } from '../../services/room.service';
 
 @Component({
   selector: 'app-room-card',
@@ -36,6 +37,15 @@ import { Room } from '../../models/room.interface';
         <ul class="mt-5 flex flex-wrap gap-2 p-0" aria-label="Servicios incluidos">
           <li *ngFor="let service of room.services" class="service-badge">{{ service }}</li>
         </ul>
+        <section class="occupied" aria-label="Disponibilidad de la habitación" aria-live="polite">
+          <p *ngIf="!occupied.length" class="occupied-free">Sin reservas próximas registradas.</p>
+          <ng-container *ngIf="occupied.length">
+            <p class="occupied-title">Fechas ya reservadas</p>
+            <ul>
+              <li *ngFor="let range of occupied">{{ range.checkIn | date:'dd/MM/yyyy':'UTC' }} → {{ range.checkOut | date:'dd/MM/yyyy':'UTC' }}</li>
+            </ul>
+          </ng-container>
+        </section>
         <div class="mt-6 flex flex-wrap items-end justify-between gap-4 border-t border-stone-200 pt-5">
           <div>
             <p class="m-0 text-xs text-stone-500">Desde / noche</p>
@@ -137,6 +147,9 @@ import { Room } from '../../models/room.interface';
     .detail-price strong { color:#183b32; font-size:19px; }
     .detail-price span { white-space:nowrap; }
     .reserve-link { width:100%; }
+    .occupied { margin-top:16px; border-radius:6px; background:#fdf3e7; border:1px solid #e7c9a4; padding:10px 12px; font-size:13px; color:#5a3512; }
+    .occupied p { margin:0; } .occupied-title { font-weight:700; } .occupied-free { color:#14532d; background:none; }
+    .occupied ul { margin:6px 0 0; padding-left:18px; } .occupied-free:only-child { color:#14532d; }
     @media(max-width:760px) {
       .gallery-backdrop { padding:12px; }
       .gallery-dialog { max-height:calc(100vh - 24px); padding:14px; }
@@ -147,8 +160,17 @@ import { Room } from '../../models/room.interface';
     @media(max-width:420px) { .room-image-wrap{height:195px} .primary-button{width:100%} }
   `]
 })
-export class RoomCardComponent {
+export class RoomCardComponent implements OnInit {
   @Input({ required: true }) room!: Room;
+  occupied: RoomOccupancy[] = [];
+
+  constructor(private readonly roomService: RoomService) {}
+
+  ngOnInit(): void {
+    this.roomService.getOccupancy().subscribe((all) => {
+      this.occupied = all.filter((item) => item.roomId === this.room._id);
+    });
+  }
   readonly fallbackImage = '/assets/images/slide_habitacion.jpg';
   galleryOpen = false;
   galleryImages: string[] = [];

@@ -5,7 +5,7 @@ import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Va
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { BookingSummaryModalComponent } from '../../components/booking-summary-modal/booking-summary-modal.component';
 import { Booking } from '../../models/booking.interface';
-import { Room } from '../../models/room.interface';
+import { Room, RoomOccupancy } from '../../models/room.interface';
 import { BookingService } from '../../services/booking.service';
 import { RoomService } from '../../services/room.service';
 
@@ -62,6 +62,12 @@ import { RoomService } from '../../services/room.service';
               </select>
               <small *ngIf="showError('roomId')" id="room-error" class="field-error">Selecciona una habitación disponible.</small>
             </label>
+            <section *ngIf="selectedRoom" class="occupied-box sm:col-span-2" aria-live="polite" aria-label="Fechas ya reservadas">
+              <p class="occupied-title">{{ selectedOccupancy.length ? 'Fechas ya reservadas en esta habitación (elige fechas distintas):' : 'Esta habitación no tiene reservas próximas registradas.' }}</p>
+              <ul *ngIf="selectedOccupancy.length">
+                <li *ngFor="let range of selectedOccupancy">Ocupada del {{ range.checkIn | date:'dd/MM/yyyy':'UTC' }} al {{ range.checkOut | date:'dd/MM/yyyy':'UTC' }}</li>
+              </ul>
+            </section>
             <label class="field" for="booking-checkin">
               <span>Fecha de llegada <span aria-hidden="true">*</span></span>
               <input id="booking-checkin" class="form-control" type="date" formControlName="checkIn" [min]="today" (change)="onCheckInChange()" [attr.aria-invalid]="showError('checkIn') || hasPastCheckInError" aria-describedby="checkin-error" aria-required="true">
@@ -160,6 +166,7 @@ import { RoomService } from '../../services/room.service';
     .payment-options{min-width:0;margin:0;border:0;padding:0}.payment-options legend{color:#26362e;font-size:13px;font-weight:700}.payment-options>p{margin:6px 0 12px;color:#59635d;font-size:12px;line-height:1.5}.payment-choice-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.payment-choice-grid label{position:relative;display:flex;min-height:54px;align-items:center;gap:7px;border:1px solid #d8ded7;border-radius:5px;background:#fff;padding:9px;color:#26362e;font-size:12px;cursor:pointer}.payment-choice-grid input{accent-color:#183b32}.payment-choice-grid label>span{display:grid;width:25px;height:25px;flex:none;place-items:center;border-radius:50%;background:#edf3ed;color:#183b32;font-size:11px;font-weight:800}.payment-choice-grid label small{margin-left:auto;color:#657168;font-size:10px}.payment-currency{max-width:260px;margin-top:13px}.payment-note{display:block;margin-top:10px;color:#606b63;font-size:11px;line-height:1.5}
     @media(max-width:760px){.booking-layout{grid-template-columns:1fr;padding-block:30px 65px}.booking-aside{order:-1}.aside-photo{height:190px}}
     @media(max-width:520px){.payment-choice-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    .occupied-box{border:1px solid #e7c9a4;border-radius:6px;background:#fdf3e7;padding:10px 14px;color:#5a3512;font-size:13px}.occupied-box p{margin:0;font-weight:700}.occupied-box ul{margin:6px 0 0;padding-left:18px}
     .doc-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.invoice-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px}.invoice-wide{grid-column:1/-1}@media(max-width:520px){.invoice-fields{grid-template-columns:1fr}}
   `]
 })
@@ -242,6 +249,7 @@ export class BookingComponent implements OnInit {
       if (!this.loadingRooms) this.applyRequestedRoom();
     });
     this.loadRooms();
+    this.roomService.refreshOccupancy().subscribe((items) => this.occupancy = items);
   }
 
   loadRooms(refresh = false): void {
@@ -272,6 +280,13 @@ export class BookingComponent implements OnInit {
     if (this.bookingForm.controls.roomId.value !== selectedId) {
       this.bookingForm.controls.roomId.setValue(selectedId);
     }
+  }
+
+  occupancy: RoomOccupancy[] = [];
+
+  get selectedOccupancy(): RoomOccupancy[] {
+    const id = this.bookingForm.controls.roomId.value;
+    return this.occupancy.filter((item) => item.roomId === id);
   }
 
   get selectedRoom(): Room | null {
@@ -340,6 +355,7 @@ export class BookingComponent implements OnInit {
     }).subscribe({
       next: (booking) => {
         this.confirmedBooking = booking;
+        this.roomService.refreshOccupancy().subscribe((items) => this.occupancy = items);
         this.bookingForm.reset({
           name: '',
           email: '',

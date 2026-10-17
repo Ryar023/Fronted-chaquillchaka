@@ -10,3 +10,9 @@ export interface Room {
   photos: string[];
   status: 'available' | 'maintenance';
 }
+
+export interface RoomOccupancy {
+  roomId: string;
+  checkIn: string;
+  checkOut: string;
+}

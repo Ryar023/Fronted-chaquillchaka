@@ -1,8 +1,8 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable, catchError, map, shareReplay, throwError } from 'rxjs';
+import { Observable, catchError, map, of, shareReplay, throwError } from 'rxjs';
 import { ApiResponse } from '../models/booking.interface';
-import { Room } from '../models/room.interface';
+import { Room, RoomOccupancy } from '../models/room.interface';
 import { environment } from '../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
@@ -12,8 +12,28 @@ export class RoomService {
   private readonly cacheMaxAgeMs = 24 * 60 * 60 * 1000;
   private roomsRequest?: Observable<Room[]>;
 
+  private occupancyRequest?: Observable<RoomOccupancy[]>;
+
   constructor(private readonly http: HttpClient) {}
 
+  getOccupancy(): Observable<RoomOccupancy[]> {
+    if (!this.occupancyRequest) {
+      this.occupancyRequest = this.http.get<ApiResponse<RoomOccupancy[]>>(`${this.roomsUrl}/occupancy`).pipe(
+        map((response) => response.data),
+        catchError(() => {
+          this.occupancyRequest = undefined;
+          return of([] as RoomOccupancy[]);
+        }),
+        shareReplay({ bufferSize: 1, refCount: false })
+      );
+    }
+    return this.occupancyRequest;
+  }
+
+  refreshOccupancy(): Observable<RoomOccupancy[]> {
+    this.occupancyRequest = undefined;
+    return this.getOccupancy();
+  }
   getRooms(): Observable<Room[]> {
     if (!this.roomsRequest) {
       this.roomsRequest = this.http.get<ApiResponse<Room[]>>(this.roomsUrl).pipe(
