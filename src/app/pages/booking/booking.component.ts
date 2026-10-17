@@ -96,6 +96,31 @@ import { RoomService } from '../../services/room.service';
               </label>
               <small class="payment-note">La web aún no procesa pagos digitales. La información actual del alojamiento indica solo efectivo; confirma con el hostal si puede aceptar Yape, Plin o tarjeta antes de viajar. No ingreses datos de tarjeta en este formulario. Efectivo puede coordinarse en soles o dólares.</small>
             </fieldset>
+            <fieldset class="payment-options sm:col-span-2">
+              <legend>Tipo de comprobante</legend>
+              <p>Elige el documento que necesitas por tu estancia.</p>
+              <div class="payment-choice-grid doc-grid">
+                <label><input type="radio" formControlName="documentType" value="boleta"><span aria-hidden="true">B</span> Boleta <small>Persona natural</small></label>
+                <label><input type="radio" formControlName="documentType" value="factura"><span aria-hidden="true">F</span> Factura <small>Con RUC</small></label>
+              </div>
+              <div *ngIf="bookingForm.controls.documentType.value === 'factura'" class="invoice-fields" aria-live="polite">
+                <label class="field" for="booking-ruc">
+                  <span>RUC <span aria-hidden="true">*</span></span>
+                  <input id="booking-ruc" class="form-control" type="text" inputmode="numeric" maxlength="11" formControlName="ruc" autocomplete="off" placeholder="11 dígitos" [attr.aria-invalid]="showError('ruc')" aria-describedby="ruc-error" aria-required="true">
+                  <small *ngIf="showError('ruc')" id="ruc-error" class="field-error">Error: ingresa un RUC válido de 11 dígitos que empiece con 10 o 20.</small>
+                </label>
+                <label class="field" for="booking-business">
+                  <span>Razón social <span aria-hidden="true">*</span></span>
+                  <input id="booking-business" class="form-control" type="text" formControlName="businessName" autocomplete="organization" [attr.aria-invalid]="showError('businessName')" aria-describedby="business-error" aria-required="true">
+                  <small *ngIf="showError('businessName')" id="business-error" class="field-error">Error: ingresa la razón social de la empresa.</small>
+                </label>
+                <label class="field invoice-wide" for="booking-fiscal">
+                  <span>Dirección fiscal <span aria-hidden="true">*</span></span>
+                  <input id="booking-fiscal" class="form-control" type="text" formControlName="fiscalAddress" autocomplete="street-address" [attr.aria-invalid]="showError('fiscalAddress')" aria-describedby="fiscal-error" aria-required="true">
+                  <small *ngIf="showError('fiscalAddress')" id="fiscal-error" class="field-error">Error: ingresa la dirección fiscal.</small>
+                </label>
+              </div>
+            </fieldset>
           </div>
           <section *ngIf="selectedRoom" class="estimate-card mt-6" aria-live="polite" aria-label="Estimado de la estancia">
             <div class="estimate-heading">
@@ -135,6 +160,7 @@ import { RoomService } from '../../services/room.service';
     .payment-options{min-width:0;margin:0;border:0;padding:0}.payment-options legend{color:#26362e;font-size:13px;font-weight:700}.payment-options>p{margin:6px 0 12px;color:#59635d;font-size:12px;line-height:1.5}.payment-choice-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.payment-choice-grid label{position:relative;display:flex;min-height:54px;align-items:center;gap:7px;border:1px solid #d8ded7;border-radius:5px;background:#fff;padding:9px;color:#26362e;font-size:12px;cursor:pointer}.payment-choice-grid input{accent-color:#183b32}.payment-choice-grid label>span{display:grid;width:25px;height:25px;flex:none;place-items:center;border-radius:50%;background:#edf3ed;color:#183b32;font-size:11px;font-weight:800}.payment-choice-grid label small{margin-left:auto;color:#657168;font-size:10px}.payment-currency{max-width:260px;margin-top:13px}.payment-note{display:block;margin-top:10px;color:#606b63;font-size:11px;line-height:1.5}
     @media(max-width:760px){.booking-layout{grid-template-columns:1fr;padding-block:30px 65px}.booking-aside{order:-1}.aside-photo{height:190px}}
     @media(max-width:520px){.payment-choice-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    .doc-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.invoice-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px}.invoice-wide{grid-column:1/-1}@media(max-width:520px){.invoice-fields{grid-template-columns:1fr}}
   `]
 })
 export class BookingComponent implements OnInit {
@@ -166,7 +192,11 @@ export class BookingComponent implements OnInit {
     checkOut: ['', Validators.required],
     guests: [1, [Validators.required, Validators.min(1), Validators.max(20)]],
     paymentMethod: this.formBuilder.nonNullable.control<'yape' | 'plin' | 'card' | 'cash'>('cash', Validators.required),
-    paymentCurrency: this.formBuilder.nonNullable.control<'PEN' | 'USD'>('PEN', Validators.required)
+    paymentCurrency: this.formBuilder.nonNullable.control<'PEN' | 'USD'>('PEN', Validators.required),
+    documentType: this.formBuilder.nonNullable.control<'boleta' | 'factura'>('boleta'),
+    ruc: [''],
+    businessName: [''],
+    fiscalAddress: ['']
   }, { validators: this.dateOrderValidator });
 
   constructor(
@@ -195,6 +225,17 @@ export class BookingComponent implements OnInit {
       if (method === 'yape' || method === 'plin') {
         this.bookingForm.controls.paymentCurrency.setValue('PEN');
       }
+    });
+    this.bookingForm.controls.documentType.valueChanges.subscribe((type) => {
+      const { ruc, businessName, fiscalAddress } = this.bookingForm.controls;
+      const invoice = type === 'factura';
+      ruc.setValidators(invoice ? [Validators.required, Validators.pattern(/^(10|20)\d{9}$/)] : []);
+      businessName.setValidators(invoice ? [Validators.required, Validators.minLength(3), Validators.maxLength(150)] : []);
+      fiscalAddress.setValidators(invoice ? [Validators.required, Validators.minLength(5), Validators.maxLength(200)] : []);
+      [ruc, businessName, fiscalAddress].forEach((control) => {
+        if (!invoice) control.setValue('');
+        control.updateValueAndValidity();
+      });
     });
     this.route.queryParamMap.subscribe((queryParams) => {
       this.requestedRoomId = queryParams.get('roomId');
@@ -280,7 +321,7 @@ export class BookingComponent implements OnInit {
       this.bookingForm.markAllAsTouched();
       return;
     }
-    const { name, email, phone, roomId, checkIn, checkOut, guests, paymentMethod, paymentCurrency } = this.bookingForm.getRawValue();
+    const { name, email, phone, roomId, checkIn, checkOut, guests, paymentMethod, paymentCurrency, documentType, ruc, businessName, fiscalAddress } = this.bookingForm.getRawValue();
     if (!name || !email || !phone || !roomId || !checkIn || !checkOut || guests === null || !paymentMethod || !paymentCurrency) return;
 
     this.submitting = true;
@@ -293,7 +334,9 @@ export class BookingComponent implements OnInit {
       checkOut,
       guests: Number(guests),
       paymentMethod,
-      paymentCurrency
+      paymentCurrency,
+      documentType,
+      ...(documentType === 'factura' ? { ruc: (ruc ?? '').trim(), businessName: (businessName ?? '').trim(), fiscalAddress: (fiscalAddress ?? '').trim() } : {})
     }).subscribe({
       next: (booking) => {
         this.confirmedBooking = booking;
@@ -306,7 +349,11 @@ export class BookingComponent implements OnInit {
           checkOut: '',
           guests: 1,
           paymentMethod: 'cash',
-          paymentCurrency: 'PEN'
+          paymentCurrency: 'PEN',
+          documentType: 'boleta',
+          ruc: '',
+          businessName: '',
+          fiscalAddress: ''
         });
         this.checkOutMinimum = this.today;
         this.submitting = false;

@@ -8,6 +8,10 @@ export interface BookingRequest {
   guests: number;
   paymentMethod: 'yape' | 'plin' | 'card' | 'cash';
   paymentCurrency: 'PEN' | 'USD';
+  documentType: 'boleta' | 'factura';
+  ruc?: string;
+  businessName?: string;
+  fiscalAddress?: string;
 }
 
 export interface Booking {
@@ -24,6 +28,7 @@ export interface Booking {
   totalUsd: number;
   paymentMethod: 'yape' | 'plin' | 'card' | 'cash';
   paymentCurrency: 'PEN' | 'USD';
+  billing?: { documentType: 'boleta' | 'factura'; ruc?: string; businessName?: string; fiscalAddress?: string };
   status: 'pending' | 'confirmed' | 'cancelled';
 }
 

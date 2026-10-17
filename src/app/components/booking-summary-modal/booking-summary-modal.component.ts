@@ -23,6 +23,8 @@ import { environment } from '../../../environments/environment';
           <div><dt>Noches · huéspedes</dt><dd>{{ booking.nights }} · {{ booking.guests }}</dd></div>
           <div><dt>Precio por noche</dt><dd>{{ currencySymbol }} {{ pricePerNight | number:'1.2-2' }} {{ booking.paymentCurrency }}</dd></div>
           <div><dt>Medio de pago preferido</dt><dd>{{ paymentMethodLabel }}</dd></div>
+          <div><dt>Comprobante</dt><dd>{{ documentLabel }}</dd></div>
+          <div *ngIf="booking.billing?.documentType === 'factura'"><dt>RUC · Razón social</dt><dd>{{ booking.billing?.ruc }} · {{ booking.billing?.businessName }}</dd></div>
           <div class="total"><dt>Total estimado</dt><dd>{{ currencySymbol }} {{ total | number:'1.2-2' }} {{ booking.paymentCurrency }}</dd></div>
         </dl>
         <p *ngIf="printError" class="print-error" role="alert">{{ printError }}</p>
@@ -66,7 +68,15 @@ export class BookingSummaryModalComponent {
       `Llegada: ${date(this.booking.checkIn)}\nSalida: ${date(this.booking.checkOut)}\n` +
       `Huéspedes: ${this.booking.guests}\nNoches: ${this.booking.nights}\n` +
       `Total estimado: ${this.currencySymbol} ${this.total.toFixed(2)} ${this.booking.paymentCurrency}\n` +
-      `Medio de pago preferido: ${this.paymentMethodLabel} (pendiente de coordinación).`;
+      `Medio de pago preferido: ${this.paymentMethodLabel} (pendiente de coordinación).\n` +
+      `Comprobante: ${this.documentLabel}` +
+      (this.booking.billing?.documentType === 'factura'
+        ? `\nRUC: ${this.booking.billing.ruc}\nRazón social: ${this.booking.billing.businessName}\nDirección fiscal: ${this.booking.billing.fiscalAddress}`
+        : '');
+  }
+
+  get documentLabel(): string {
+    return this.booking.billing?.documentType === 'factura' ? 'Factura' : 'Boleta';
   }
 
   get currencySymbol(): string {
@@ -123,7 +133,12 @@ export class BookingSummaryModalComponent {
       total: this.formatPrice(this.total),
       currency: this.booking.paymentCurrency,
       currencySymbol: this.currencySymbol,
-      paymentMethod: this.paymentMethodLabel
+      paymentMethod: this.paymentMethodLabel,
+      document: this.documentLabel,
+      ruc: escapeHtml(this.booking.billing?.ruc ?? ''),
+      businessName: escapeHtml(this.booking.billing?.businessName ?? ''),
+      fiscalAddress: escapeHtml(this.booking.billing?.fiscalAddress ?? ''),
+      isInvoice: this.booking.billing?.documentType === 'factura'
     };
 
     ticketWindow.document.open();
@@ -160,6 +175,8 @@ export class BookingSummaryModalComponent {
               <div><dt>Huéspedes</dt><dd>${safe.guests}</dd></div>
               <div><dt>Precio por noche</dt><dd>${safe.currencySymbol} ${safe.rate} ${safe.currency}</dd></div>
               <div><dt>Medio de pago preferido</dt><dd>${safe.paymentMethod}</dd></div>
+              <div><dt>Comprobante solicitado</dt><dd>${safe.document}</dd></div>
+              ${safe.isInvoice ? `<div><dt>RUC</dt><dd>${safe.ruc}</dd></div><div><dt>Razón social</dt><dd>${safe.businessName}</dd></div><div><dt>Dirección fiscal</dt><dd>${safe.fiscalAddress}</dd></div>` : ''}
               <div class="total"><dt>Total estimado</dt><dd>${safe.currencySymbol} ${safe.total} ${safe.currency}</dd></div>
               <div><dt>Correo de contacto</dt><dd>${safe.email}</dd></div>
               <div><dt>Teléfono</dt><dd>${safe.phone}</dd></div>
