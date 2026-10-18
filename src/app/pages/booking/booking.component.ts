@@ -8,6 +8,7 @@ import { Booking } from '../../models/booking.interface';
 import { Room, RoomOccupancy } from '../../models/room.interface';
 import { BookingService } from '../../services/booking.service';
 import { RoomService } from '../../services/room.service';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-booking',
@@ -100,6 +101,29 @@ import { RoomService } from '../../services/room.service';
                   <option value="USD">Dólares (USD)</option>
                 </select>
               </label>
+              <div *ngIf="paymentMethod === 'yape' || paymentMethod === 'plin'" class="pay-panel" aria-live="polite">
+                <img class="pay-qr" [src]="'/assets/images/' + paymentMethod + '-qr.png'" [alt]="'Código QR para pagar con ' + (paymentMethod === 'yape' ? 'Yape' : 'Plin')" width="160" height="160" (error)="qrMissing = true" [hidden]="qrMissing">
+                <div>
+                  <p class="pay-title">Paga con {{ paymentMethod === 'yape' ? 'Yape' : 'Plin' }} (solo soles)</p>
+                  <ol>
+                    <li>Abre {{ paymentMethod === 'yape' ? 'Yape' : 'Plin' }} y escanea el QR, o envía al número <strong>{{ yapePlinNumber }}</strong> a nombre de <strong>{{ yapePlinHolder }}</strong>.</li>
+                    <li>Paga el total de tu reserva. Lo verás en el resumen.</li>
+                    <li>Envía la captura por WhatsApp junto con tu código de reserva para que recepción confirme tu pago.</li>
+                  </ol>
+                </div>
+              </div>
+              <div *ngIf="paymentMethod === 'card'" class="pay-panel" aria-live="polite">
+                <div>
+                  <p class="pay-title">Pago con tarjeta</p>
+                  <p class="m-0">Por seguridad, <strong>no pedimos el número de tu tarjeta</strong> en esta web. Pagarás con POS al llegar al hostal o recepción te enviará un enlace de pago seguro.</p>
+                </div>
+              </div>
+              <div *ngIf="paymentMethod === 'cash'" class="pay-panel" aria-live="polite">
+                <div>
+                  <p class="pay-title">Pago en efectivo</p>
+                  <p class="m-0">Pagas directamente en recepción al llegar, en soles o dólares.</p>
+                </div>
+              </div>
               <small class="payment-note">La web aún no procesa pagos digitales. La información actual del alojamiento indica solo efectivo; confirma con el hostal si puede aceptar Yape, Plin o tarjeta antes de viajar. No ingreses datos de tarjeta en este formulario. Efectivo puede coordinarse en soles o dólares.</small>
             </fieldset>
             <fieldset class="payment-options sm:col-span-2">
@@ -166,6 +190,7 @@ import { RoomService } from '../../services/room.service';
     .payment-options{min-width:0;margin:0;border:0;padding:0}.payment-options legend{color:#26362e;font-size:13px;font-weight:700}.payment-options>p{margin:6px 0 12px;color:#59635d;font-size:12px;line-height:1.5}.payment-choice-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.payment-choice-grid label{position:relative;display:flex;min-height:54px;align-items:center;gap:7px;border:1px solid #d8ded7;border-radius:5px;background:#fff;padding:9px;color:#26362e;font-size:12px;cursor:pointer}.payment-choice-grid input{accent-color:#183b32}.payment-choice-grid label>span{display:grid;width:25px;height:25px;flex:none;place-items:center;border-radius:50%;background:#edf3ed;color:#183b32;font-size:11px;font-weight:800}.payment-choice-grid label small{margin-left:auto;color:#657168;font-size:10px}.payment-currency{max-width:260px;margin-top:13px}.payment-note{display:block;margin-top:10px;color:#606b63;font-size:11px;line-height:1.5}
     @media(max-width:760px){.booking-layout{grid-template-columns:1fr;padding-block:30px 65px}.booking-aside{order:-1}.aside-photo{height:190px}}
     @media(max-width:520px){.payment-choice-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    .pay-panel{display:flex;gap:16px;align-items:center;margin-top:14px;border:1px solid #cfe0d3;border-radius:8px;background:#f1f7f2;padding:14px;color:#26362e;font-size:14px;line-height:1.5}.pay-qr{border:1px solid #d8ded7;border-radius:6px;background:#fff;padding:6px}.pay-title{margin:0 0 6px;font-weight:700;color:#183b32}.pay-panel ol{margin:0;padding-left:18px}
     .occupied-box{border:1px solid #e7c9a4;border-radius:6px;background:#fdf3e7;padding:10px 14px;color:#5a3512;font-size:13px}.occupied-box p{margin:0;font-weight:700}.occupied-box ul{margin:6px 0 0;padding-left:18px}
     .doc-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.invoice-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px}.invoice-wide{grid-column:1/-1}@media(max-width:520px){.invoice-fields{grid-template-columns:1fr}}
   `]
@@ -229,6 +254,7 @@ export class BookingComponent implements OnInit {
       guests.updateValueAndValidity();
     });
     this.bookingForm.controls.paymentMethod.valueChanges.subscribe((method) => {
+      this.qrMissing = false;
       if (method === 'yape' || method === 'plin') {
         this.bookingForm.controls.paymentCurrency.setValue('PEN');
       }
@@ -283,6 +309,13 @@ export class BookingComponent implements OnInit {
   }
 
   occupancy: RoomOccupancy[] = [];
+  qrMissing = false;
+  readonly yapePlinNumber = environment.yapePlinNumber;
+  readonly yapePlinHolder = environment.yapePlinHolder;
+
+  get paymentMethod(): 'yape' | 'plin' | 'card' | 'cash' {
+    return this.bookingForm.controls.paymentMethod.value;
+  }
 
   get selectedOccupancy(): RoomOccupancy[] {
     const id = this.bookingForm.controls.roomId.value;
