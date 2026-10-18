@@ -102,9 +102,9 @@ import { environment } from '../../../environments/environment';
                 </select>
               </label>
               <div *ngIf="paymentMethod === 'yape' || paymentMethod === 'plin'" class="pay-panel" aria-live="polite">
-                <img *ngIf="qrDataUrl" class="pay-qr" [src]="qrDataUrl" [alt]="'Código QR de demostración para pagar con ' + (paymentMethod === 'yape' ? 'Yape' : 'Plin')" width="170" height="170">
+                <img *ngIf="qrDataUrl" class="pay-qr" [src]="qrDataUrl" [alt]="'Código QR para pagar con ' + (paymentMethod === 'yape' ? 'Yape' : 'Plin')" width="170" height="170">
                 <div>
-                  <p class="pay-title">Paga con {{ paymentMethod === 'yape' ? 'Yape' : 'Plin' }} (solo soles) <span class="demo-tag">Demostración</span></p>
+                  <p class="pay-title">Paga con {{ paymentMethod === 'yape' ? 'Yape' : 'Plin' }} (solo soles)</p>
                   <ol>
                     <li>Escanea el QR o envía al número <strong>{{ yapePlinNumber }}</strong> a nombre de <strong>{{ yapePlinHolder }}</strong>.</li>
                     <li>Monto a pagar: <strong>{{ estimateTotal !== null ? 'S/ ' + (estimateTotal | number:'1.2-2') : 'completa las fechas para ver el monto' }}</strong>.</li>
@@ -114,8 +114,7 @@ import { environment } from '../../../environments/environment';
               </div>
               <div *ngIf="paymentMethod === 'card'" class="pay-panel card-panel" aria-live="polite">
                 <div class="card-form">
-                  <p class="pay-title">Datos de la tarjeta <span class="demo-tag">Simulación</span></p>
-                  <p class="demo-note">Proyecto académico: usa datos ficticios, por ejemplo 4111 1111 1111 1111. Estos datos no se envían ni se guardan.</p>
+                  <p class="pay-title">Datos de la tarjeta</p>
                   <label class="field" for="card-number"><span>Número de tarjeta</span>
                     <input id="card-number" class="form-control" type="text" inputmode="numeric" autocomplete="off" maxlength="19" placeholder="4111 1111 1111 1111" formControlName="cardNumber" (input)="formatCardNumber()" [attr.aria-invalid]="showError('cardNumber')" aria-describedby="card-number-error" aria-required="true">
                     <small *ngIf="showError('cardNumber')" id="card-number-error" class="field-error">Error: ingresa los 16 dígitos de la tarjeta.</small>
@@ -142,7 +141,7 @@ import { environment } from '../../../environments/environment';
                   <p class="m-0">Pagas directamente en recepción al llegar, en soles o dólares.</p>
                 </div>
               </div>
-              <small class="payment-note">Esta web es un proyecto académico: los códigos QR y el formulario de tarjeta son una simulación y no realizan cobros reales.</small>            </fieldset>
+            </fieldset>
             <fieldset class="payment-options sm:col-span-2">
               <legend>Tipo de comprobante</legend>
               <p>Elige el documento que necesitas por tu estancia.</p>
@@ -365,7 +364,7 @@ export class BookingComponent implements OnInit {
   private refreshQr(): void {
     const method = this.paymentMethod;
     if (method !== 'yape' && method !== 'plin') { this.qrDataUrl = ''; this.lastQrPayload = ''; return; }
-    const payload = `DEMO-${method.toUpperCase()}|${this.yapePlinNumber}|${this.yapePlinHolder}|PEN ${(this.estimateTotal ?? 0).toFixed(2)}|SIMULACION ACADEMICA`;
+    const payload = `DEMO-${method.toUpperCase()}|${this.yapePlinNumber}|${this.yapePlinHolder}|PEN ${(this.estimateTotal ?? 0).toFixed(2)}`;
     if (payload === this.lastQrPayload) return;
     this.lastQrPayload = payload;
     void import('qrcode')
@@ -374,7 +373,7 @@ export class BookingComponent implements OnInit {
         return qr.toDataURL(payload, { width: 170, margin: 1, color: { dark: '#183b32', light: '#ffffff' } });
       })
       .then((url) => { if (payload === this.lastQrPayload) { this.qrDataUrl = url; this.cdr.markForCheck(); } })
-      .catch((error: unknown) => { console.error('No se pudo generar el QR de demostración.', error); });
+      .catch((error: unknown) => { console.error('No se pudo generar el QR.', error); });
   }
 
   get paymentMethod(): 'yape' | 'plin' | 'card' | 'cash' {
