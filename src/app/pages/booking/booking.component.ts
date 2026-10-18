@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { BookingSummaryModalComponent } from '../../components/booking-summary-modal/booking-summary-modal.component';
@@ -253,6 +253,7 @@ export class BookingComponent implements OnInit {
   }, { validators: this.dateOrderValidator });
 
   constructor(
+    private readonly cdr: ChangeDetectorRef,
     private readonly formBuilder: FormBuilder,
     private readonly route: ActivatedRoute,
     private readonly router: Router,
@@ -367,8 +368,13 @@ export class BookingComponent implements OnInit {
     const payload = `DEMO-${method.toUpperCase()}|${this.yapePlinNumber}|${this.yapePlinHolder}|PEN ${(this.estimateTotal ?? 0).toFixed(2)}|SIMULACION ACADEMICA`;
     if (payload === this.lastQrPayload) return;
     this.lastQrPayload = payload;
-    void import('qrcode').then((QRCode) => QRCode.toDataURL(payload, { width: 170, margin: 1, color: { dark: '#183b32', light: '#ffffff' } }))
-      .then((url) => { if (payload === this.lastQrPayload) this.qrDataUrl = url; });
+    void import('qrcode')
+      .then((mod) => {
+        const qr = ((mod as unknown as { default?: typeof mod }).default ?? mod) as typeof mod;
+        return qr.toDataURL(payload, { width: 170, margin: 1, color: { dark: '#183b32', light: '#ffffff' } });
+      })
+      .then((url) => { if (payload === this.lastQrPayload) { this.qrDataUrl = url; this.cdr.markForCheck(); } })
+      .catch((error: unknown) => { console.error('No se pudo generar el QR de demostración.', error); });
   }
 
   get paymentMethod(): 'yape' | 'plin' | 'card' | 'cash' {
