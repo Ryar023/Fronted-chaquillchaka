@@ -102,20 +102,38 @@ import { environment } from '../../../environments/environment';
                 </select>
               </label>
               <div *ngIf="paymentMethod === 'yape' || paymentMethod === 'plin'" class="pay-panel" aria-live="polite">
-                <img class="pay-qr" [src]="'/assets/images/' + paymentMethod + '-qr.png'" [alt]="'Código QR para pagar con ' + (paymentMethod === 'yape' ? 'Yape' : 'Plin')" width="160" height="160" (error)="qrMissing = true" [hidden]="qrMissing">
+                <img *ngIf="qrDataUrl" class="pay-qr" [src]="qrDataUrl" [alt]="'Código QR de demostración para pagar con ' + (paymentMethod === 'yape' ? 'Yape' : 'Plin')" width="170" height="170">
                 <div>
-                  <p class="pay-title">Paga con {{ paymentMethod === 'yape' ? 'Yape' : 'Plin' }} (solo soles)</p>
+                  <p class="pay-title">Paga con {{ paymentMethod === 'yape' ? 'Yape' : 'Plin' }} (solo soles) <span class="demo-tag">Demostración</span></p>
                   <ol>
-                    <li>Abre {{ paymentMethod === 'yape' ? 'Yape' : 'Plin' }} y escanea el QR, o envía al número <strong>{{ yapePlinNumber }}</strong> a nombre de <strong>{{ yapePlinHolder }}</strong>.</li>
-                    <li>Paga el total de tu reserva. Lo verás en el resumen.</li>
-                    <li>Envía la captura por WhatsApp junto con tu código de reserva para que recepción confirme tu pago.</li>
+                    <li>Escanea el QR o envía al número <strong>{{ yapePlinNumber }}</strong> a nombre de <strong>{{ yapePlinHolder }}</strong>.</li>
+                    <li>Monto a pagar: <strong>{{ estimateTotal !== null ? 'S/ ' + (estimateTotal | number:'1.2-2') : 'completa las fechas para ver el monto' }}</strong>.</li>
+                    <li>Envía la captura por WhatsApp con tu código de reserva para que recepción confirme tu pago.</li>
                   </ol>
                 </div>
               </div>
-              <div *ngIf="paymentMethod === 'card'" class="pay-panel" aria-live="polite">
-                <div>
-                  <p class="pay-title">Pago con tarjeta</p>
-                  <p class="m-0">Por seguridad, <strong>no pedimos el número de tu tarjeta</strong> en esta web. Pagarás con POS al llegar al hostal o recepción te enviará un enlace de pago seguro.</p>
+              <div *ngIf="paymentMethod === 'card'" class="pay-panel card-panel" aria-live="polite">
+                <div class="card-form">
+                  <p class="pay-title">Datos de la tarjeta <span class="demo-tag">Simulación</span></p>
+                  <p class="demo-note">Proyecto académico: usa datos ficticios, por ejemplo 4111 1111 1111 1111. Estos datos no se envían ni se guardan.</p>
+                  <label class="field" for="card-number"><span>Número de tarjeta</span>
+                    <input id="card-number" class="form-control" type="text" inputmode="numeric" autocomplete="off" maxlength="19" placeholder="4111 1111 1111 1111" formControlName="cardNumber" (input)="formatCardNumber()" [attr.aria-invalid]="showError('cardNumber')" aria-describedby="card-number-error" aria-required="true">
+                    <small *ngIf="showError('cardNumber')" id="card-number-error" class="field-error">Error: ingresa los 16 dígitos de la tarjeta.</small>
+                  </label>
+                  <label class="field" for="card-name"><span>Nombre del titular</span>
+                    <input id="card-name" class="form-control" type="text" autocomplete="off" placeholder="Como figura en la tarjeta" formControlName="cardName" [attr.aria-invalid]="showError('cardName')" aria-describedby="card-name-error" aria-required="true">
+                    <small *ngIf="showError('cardName')" id="card-name-error" class="field-error">Error: ingresa el nombre del titular.</small>
+                  </label>
+                  <div class="card-row">
+                    <label class="field" for="card-expiry"><span>Vence (MM/AA)</span>
+                      <input id="card-expiry" class="form-control" type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="12/28" formControlName="cardExpiry" (input)="formatExpiry()" [attr.aria-invalid]="showError('cardExpiry')" aria-describedby="card-expiry-error" aria-required="true">
+                      <small *ngIf="showError('cardExpiry')" id="card-expiry-error" class="field-error">Error: usa el formato MM/AA.</small>
+                    </label>
+                    <label class="field" for="card-cvv"><span>CVV</span>
+                      <input id="card-cvv" class="form-control" type="password" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="123" formControlName="cardCvv" [attr.aria-invalid]="showError('cardCvv')" aria-describedby="card-cvv-error" aria-required="true">
+                      <small *ngIf="showError('cardCvv')" id="card-cvv-error" class="field-error">Error: ingresa 3 o 4 dígitos.</small>
+                    </label>
+                  </div>
                 </div>
               </div>
               <div *ngIf="paymentMethod === 'cash'" class="pay-panel" aria-live="polite">
@@ -124,8 +142,7 @@ import { environment } from '../../../environments/environment';
                   <p class="m-0">Pagas directamente en recepción al llegar, en soles o dólares.</p>
                 </div>
               </div>
-              <small class="payment-note">La web aún no procesa pagos digitales. La información actual del alojamiento indica solo efectivo; confirma con el hostal si puede aceptar Yape, Plin o tarjeta antes de viajar. No ingreses datos de tarjeta en este formulario. Efectivo puede coordinarse en soles o dólares.</small>
-            </fieldset>
+              <small class="payment-note">Esta web es un proyecto académico: los códigos QR y el formulario de tarjeta son una simulación y no realizan cobros reales.</small>            </fieldset>
             <fieldset class="payment-options sm:col-span-2">
               <legend>Tipo de comprobante</legend>
               <p>Elige el documento que necesitas por tu estancia.</p>
@@ -190,7 +207,7 @@ import { environment } from '../../../environments/environment';
     .payment-options{min-width:0;margin:0;border:0;padding:0}.payment-options legend{color:#26362e;font-size:13px;font-weight:700}.payment-options>p{margin:6px 0 12px;color:#59635d;font-size:12px;line-height:1.5}.payment-choice-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.payment-choice-grid label{position:relative;display:flex;min-height:54px;align-items:center;gap:7px;border:1px solid #d8ded7;border-radius:5px;background:#fff;padding:9px;color:#26362e;font-size:12px;cursor:pointer}.payment-choice-grid input{accent-color:#183b32}.payment-choice-grid label>span{display:grid;width:25px;height:25px;flex:none;place-items:center;border-radius:50%;background:#edf3ed;color:#183b32;font-size:11px;font-weight:800}.payment-choice-grid label small{margin-left:auto;color:#657168;font-size:10px}.payment-currency{max-width:260px;margin-top:13px}.payment-note{display:block;margin-top:10px;color:#606b63;font-size:11px;line-height:1.5}
     @media(max-width:760px){.booking-layout{grid-template-columns:1fr;padding-block:30px 65px}.booking-aside{order:-1}.aside-photo{height:190px}}
     @media(max-width:520px){.payment-choice-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    .pay-panel{display:flex;gap:16px;align-items:center;margin-top:14px;border:1px solid #cfe0d3;border-radius:8px;background:#f1f7f2;padding:14px;color:#26362e;font-size:14px;line-height:1.5}.pay-qr{border:1px solid #d8ded7;border-radius:6px;background:#fff;padding:6px}.pay-title{margin:0 0 6px;font-weight:700;color:#183b32}.pay-panel ol{margin:0;padding-left:18px}
+    .pay-panel{display:flex;gap:16px;align-items:center;margin-top:14px;border:1px solid #cfe0d3;border-radius:8px;background:#f1f7f2;padding:14px;color:#26362e;font-size:14px;line-height:1.5}.pay-qr{border:1px solid #d8ded7;border-radius:6px;background:#fff;padding:6px}.pay-title{margin:0 0 6px;font-weight:700;color:#183b32}.pay-panel ol{margin:0;padding-left:18px}.demo-tag{display:inline-block;margin-left:6px;border-radius:999px;background:#fff3d6;color:#6b4a00;padding:2px 8px;font-size:11px;font-weight:700}.demo-note{margin:0 0 10px;color:#46544d;font-size:12px}.card-panel{display:block}.card-form{display:grid;gap:12px;max-width:420px}.card-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     .occupied-box{border:1px solid #e7c9a4;border-radius:6px;background:#fdf3e7;padding:10px 14px;color:#5a3512;font-size:13px}.occupied-box p{margin:0;font-weight:700}.occupied-box ul{margin:6px 0 0;padding-left:18px}
     .doc-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.invoice-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px}.invoice-wide{grid-column:1/-1}@media(max-width:520px){.invoice-fields{grid-template-columns:1fr}}
   `]
@@ -225,6 +242,10 @@ export class BookingComponent implements OnInit {
     guests: [1, [Validators.required, Validators.min(1), Validators.max(20)]],
     paymentMethod: this.formBuilder.nonNullable.control<'yape' | 'plin' | 'card' | 'cash'>('cash', Validators.required),
     paymentCurrency: this.formBuilder.nonNullable.control<'PEN' | 'USD'>('PEN', Validators.required),
+    cardNumber: [''],
+    cardName: [''],
+    cardExpiry: [''],
+    cardCvv: [''],
     documentType: this.formBuilder.nonNullable.control<'boleta' | 'factura'>('boleta'),
     ruc: [''],
     businessName: [''],
@@ -254,7 +275,8 @@ export class BookingComponent implements OnInit {
       guests.updateValueAndValidity();
     });
     this.bookingForm.controls.paymentMethod.valueChanges.subscribe((method) => {
-      this.qrMissing = false;
+      this.applyCardValidators(method === 'card');
+      this.refreshQr();
       if (method === 'yape' || method === 'plin') {
         this.bookingForm.controls.paymentCurrency.setValue('PEN');
       }
@@ -274,6 +296,7 @@ export class BookingComponent implements OnInit {
       this.requestedRoomId = queryParams.get('roomId');
       if (!this.loadingRooms) this.applyRequestedRoom();
     });
+    this.bookingForm.valueChanges.subscribe(() => this.refreshQr());
     this.loadRooms();
     this.roomService.refreshOccupancy().subscribe((items) => this.occupancy = items);
   }
@@ -309,9 +332,44 @@ export class BookingComponent implements OnInit {
   }
 
   occupancy: RoomOccupancy[] = [];
-  qrMissing = false;
+  qrDataUrl = '';
+  private lastQrPayload = '';
   readonly yapePlinNumber = environment.yapePlinNumber;
   readonly yapePlinHolder = environment.yapePlinHolder;
+
+  formatCardNumber(): void {
+    const control = this.bookingForm.controls.cardNumber;
+    const digits = (control.value ?? '').replace(/\D/g, '').slice(0, 16);
+    control.setValue(digits.replace(/(\d{4})(?=\d)/g, '$1 '), { emitEvent: false });
+  }
+
+  formatExpiry(): void {
+    const control = this.bookingForm.controls.cardExpiry;
+    const digits = (control.value ?? '').replace(/\D/g, '').slice(0, 4);
+    control.setValue(digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits, { emitEvent: false });
+  }
+
+  private applyCardValidators(enabled: boolean): void {
+    const { cardNumber, cardName, cardExpiry, cardCvv } = this.bookingForm.controls;
+    cardNumber.setValidators(enabled ? [Validators.required, Validators.pattern(/^\d{4} \d{4} \d{4} \d{4}$/)] : []);
+    cardName.setValidators(enabled ? [Validators.required, Validators.minLength(3)] : []);
+    cardExpiry.setValidators(enabled ? [Validators.required, Validators.pattern(/^(0[1-9]|1[0-2])\/\d{2}$/)] : []);
+    cardCvv.setValidators(enabled ? [Validators.required, Validators.pattern(/^\d{3,4}$/)] : []);
+    [cardNumber, cardName, cardExpiry, cardCvv].forEach((control) => {
+      if (!enabled) control.setValue('', { emitEvent: false });
+      control.updateValueAndValidity({ emitEvent: false });
+    });
+  }
+
+  private refreshQr(): void {
+    const method = this.paymentMethod;
+    if (method !== 'yape' && method !== 'plin') { this.qrDataUrl = ''; this.lastQrPayload = ''; return; }
+    const payload = `DEMO-${method.toUpperCase()}|${this.yapePlinNumber}|${this.yapePlinHolder}|PEN ${(this.estimateTotal ?? 0).toFixed(2)}|SIMULACION ACADEMICA`;
+    if (payload === this.lastQrPayload) return;
+    this.lastQrPayload = payload;
+    void import('qrcode').then((QRCode) => QRCode.toDataURL(payload, { width: 170, margin: 1, color: { dark: '#183b32', light: '#ffffff' } }))
+      .then((url) => { if (payload === this.lastQrPayload) this.qrDataUrl = url; });
+  }
 
   get paymentMethod(): 'yape' | 'plin' | 'card' | 'cash' {
     return this.bookingForm.controls.paymentMethod.value;
