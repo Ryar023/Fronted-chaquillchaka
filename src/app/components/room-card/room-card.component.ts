@@ -119,7 +119,7 @@ import { RoomService } from '../../services/room.service';
     .details-button { display:inline-flex; min-height:44px; align-items:center; gap:8px; margin-top:16px; border:1px solid #183b32; border-radius:4px; background:#fff; padding:9px 12px; color:#183b32; font-size:13px; font-weight:700; cursor:pointer; }
     .details-button:hover { background:#edf1ec; }
     .capacity { flex:none; border-radius:99px; background:#edf1ec; padding:6px 9px; color:#183b32; font-size:12px; font-weight:700; }
-    .service-badge { list-style:none; border:1px solid #e4e7e2; border-radius:99px; padding:5px 9px; color:#4b5750; font-size:11px; }
+    .service-badge { list-style:none; border:1px solid #e4e7e2; border-radius:99px; padding:5px 9px; color:#4b5750; font-size:12px; }
     .gallery-backdrop { position:fixed; z-index:1000; inset:0; display:grid; place-items:center; overflow-y:auto; background:#101714b8; padding:24px; }
     .gallery-dialog { position:relative; width:min(1120px,100%); max-height:calc(100vh - 48px); overflow-y:auto; border-radius:9px; background:#fff; padding:24px; box-shadow:0 24px 80px #0005; }
     .gallery-close { position:absolute; z-index:2; top:9px; right:12px; width:40px; height:40px; border:0; border-radius:50%; background:#fff; color:#26332c; font-size:27px; line-height:1; cursor:pointer; }

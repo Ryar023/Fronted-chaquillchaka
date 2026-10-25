@@ -120,7 +120,7 @@ import { RouterModule } from '@angular/router';
     .amenity-groups h3{margin:0 0 9px;color:#29362f;font-size:13px}
     .amenity-groups h3 span{margin-right:8px;color:#183b32}
     .amenity-groups ul{display:grid;gap:7px;margin:0;padding-left:20px;color:#59635d;font-size:12px;line-height:1.5}
-    .details-note{margin:20px 0 0;border-top:1px solid #e6e8e2;padding-top:13px;color:#68716b;font-size:11px;line-height:1.55}
+    .details-note{margin:20px 0 0;border-top:1px solid #e6e8e2;padding-top:13px;color:#68716b;font-size:12px;line-height:1.55}
     .house-rules dl{margin:16px 0 0;border-top:1px solid #e6e8e2}
     .house-rules dl div{display:grid;grid-template-columns:105px minmax(0,1fr);gap:12px;border-bottom:1px solid #e6e8e2;padding:11px 0;font-size:12px;line-height:1.5}
     .house-rules dt{color:#59635d;font-weight:650}

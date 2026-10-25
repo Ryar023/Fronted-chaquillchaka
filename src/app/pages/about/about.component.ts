@@ -185,7 +185,7 @@ import { RouterModule } from '@angular/router';
     .booking-score{display:flex;align-items:center;gap:15px;border-radius:7px;background:#183b32;padding:17px 22px;color:white;text-decoration:none}
     .score-number{font-size:30px;font-weight:800;letter-spacing:-.04em}
     .booking-score strong,.booking-score small{display:block}
-    .booking-score small{margin-top:3px;color:#e2ebe6;font-size:11px}
+    .booking-score small{margin-top:3px;color:#e2ebe6;font-size:12px}
     .review-intro{max-width:690px;margin:24px 0;color:#4f5b53;line-height:1.75}
     .review-categories{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px}
     .category-card{display:grid;grid-template-columns:1fr auto;gap:11px;border:1px solid #e1e3dc;border-radius:5px;background:white;padding:14px;color:#47534c;font-size:13px}
@@ -204,7 +204,7 @@ import { RouterModule } from '@angular/router';
     .review-avatar{display:grid;width:38px;height:38px;flex:none;place-items:center;border-radius:50%;background:#e9efe9;color:#183b32;font-size:13px;font-weight:800}
     .review-author strong,.review-author small{display:block}
     .review-author strong{color:#29362f;font-size:13px}
-    .review-author small{margin-top:3px;color:#68716b;font-size:11px}
+    .review-author small{margin-top:3px;color:#68716b;font-size:12px}
     .review-card h4{margin:13px 0 7px;color:#27372f;font-size:15px}
     .review-card p,.review-modal p,.full-review-copy p{margin:0;color:#4f5b53;font-size:13px;line-height:1.65}
     .more-link{margin-top:9px;border:0;background:none;padding:0;color:#225ca8;font-size:13px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
@@ -224,7 +224,7 @@ import { RouterModule } from '@angular/router';
     .overall-score{display:flex;align-items:center;gap:13px}
     .overall-score-number,.individual-score{display:inline-grid;min-width:38px;min-height:38px;place-items:center;border-radius:4px;background:#0753a5;padding:5px;color:white;font-size:17px;font-weight:800}
     .overall-score strong,.overall-score small{display:block}
-    .overall-score strong{font-size:14px}.overall-score small{margin-top:3px;color:#68716b;font-size:10px;line-height:1.4}
+    .overall-score strong{font-size:14px}.overall-score small{margin-top:3px;color:#68716b;font-size:12px;line-height:1.4}
     .review-trust{color:#35835e;font-size:12px}
     .modal-categories,.review-filters{border-bottom:1px solid #e1e3dc;padding:18px 0}
     .modal-categories h3,.review-filters h3,.results-heading h3{margin:0 0 14px;color:#303a34;font-size:15px}
@@ -233,7 +233,7 @@ import { RouterModule } from '@angular/router';
     .modal-category-grid strong{font-weight:650}.modal-score-track{grid-column:1/-1;height:6px;overflow:hidden;border-radius:5px;background:#e7ebe5}
     .modal-score-track i{display:block;height:100%;background:#0753a5}
     .filter-controls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
-    .filter-controls label{display:grid;gap:6px;color:#5c665f;font-size:11px}
+    .filter-controls label{display:grid;gap:6px;color:#5c665f;font-size:12px}
     .filter-controls select{width:100%;min-width:0;border:1px solid #cfd5d0;border-radius:4px;background:white;padding:8px;color:#303a34;font-size:12px}
     .topic-label{margin:17px 0 9px;color:#5c665f;font-size:12px}
     .topic-filters{display:flex;flex-wrap:wrap;gap:8px}
@@ -242,13 +242,13 @@ import { RouterModule } from '@angular/router';
     .topic-filters button.clear-filter{border-color:transparent;color:#2563a9;text-decoration:underline}
     .all-review-results{padding-top:19px}
     .results-heading{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
-    .results-heading span{color:#68716b;font-size:11px}
+    .results-heading span{color:#68716b;font-size:12px}
     .full-review{display:grid;grid-template-columns:170px minmax(0,1fr);gap:20px;border-bottom:1px solid #e1e3dc;padding:20px 0}
     .full-review-meta{display:flex;flex-direction:column;gap:12px}
-    .metadata-item{display:flex;align-items:flex-start;gap:9px;color:#525e56;font-size:11px;line-height:1.5}
+    .metadata-item{display:flex;align-items:flex-start;gap:9px;color:#525e56;font-size:12px;line-height:1.5}
     .metadata-item>span{width:17px;flex:none;color:#657268;text-align:center}
     .full-review-copy h3{margin:4px 0 8px;color:#27372f;font-size:16px}
-    .full-review-topline{display:flex;align-items:center;justify-content:space-between;min-height:28px;color:#68716b;font-size:11px}
+    .full-review-topline{display:flex;align-items:center;justify-content:space-between;min-height:28px;color:#68716b;font-size:12px}
     .individual-score{min-width:29px;min-height:29px;font-size:13px}
     .review-mood{display:flex;gap:9px;align-items:flex-start}
     .review-mood>span{color:#25815a;font-size:18px;line-height:1}

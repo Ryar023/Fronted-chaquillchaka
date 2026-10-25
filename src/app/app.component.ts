@@ -1,13 +1,17 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
+import { Title } from '@angular/platform-browser';
+import { NavigationEnd, Router } from '@angular/router';
+import { filter } from 'rxjs';
 
 @Component({
   selector: 'app-root',
   standalone: false,
   template: `
     <app-navbar></app-navbar>
-    <main id="contenido">
+    <main id="contenido" tabindex="-1">
       <router-outlet></router-outlet>
     </main>
+    <div class="sr-only" role="status" aria-live="polite">{{ routeAnnouncement }}</div>
     <footer class="site-footer">
       <div class="page-shell footer-content">
         <div class="footer-social">
@@ -48,7 +52,7 @@ import { Component } from '@angular/core';
     .footer-logo img { display:block; width:138px; height:auto; }
     .footer-contact { display:flex; flex-direction:column; align-items:flex-end; gap:6px; font-size:12px; text-align:right; }
     .footer-contact a { color:var(--forest); text-decoration:underline; text-underline-offset:3px; }
-    .footer-copyright { grid-column:1/-1; border-top:1px solid #e5e6df; padding-top:14px; color:var(--muted); font-size:11px; text-align:center; }
+    .footer-copyright { grid-column:1/-1; border-top:1px solid #e5e6df; padding-top:14px; color:var(--muted); font-size:12px; text-align:center; }
     @media(max-width:620px) {
       .footer-content { grid-template-columns:1fr 1fr; }
       .footer-logo { justify-self:end; }
@@ -56,6 +60,23 @@ import { Component } from '@angular/core';
     }
   `]
 })
-export class AppComponent {
+export class AppComponent implements OnInit {
   readonly currentYear = new Date().getFullYear();
+  routeAnnouncement = '';
+
+  constructor(private readonly router: Router, private readonly title: Title) {}
+
+  ngOnInit(): void {
+    let firstNavigation = true;
+    this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe(() => {
+      if (firstNavigation) {
+        firstNavigation = false;
+        return;
+      }
+      setTimeout(() => {
+        this.routeAnnouncement = `Página cargada: ${this.title.getTitle()}`;
+        document.getElementById('contenido')?.focus({ preventScroll: true });
+      });
+    });
+  }
 }

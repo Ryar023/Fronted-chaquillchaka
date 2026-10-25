@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, EventEmitter, HostListener, Input, OnDestroy, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Booking } from '../../models/booking.interface';
 import { environment } from '../../../environments/environment';
@@ -8,7 +8,7 @@ import { environment } from '../../../environments/environment';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="modal-backdrop" (click)="dismiss()" (keydown.escape)="dismiss()">
+    <div class="modal-backdrop" (click)="dismiss()">
       <section class="modal surface-card" role="dialog" aria-modal="true" aria-labelledby="booking-confirmed-title" (click)="$event.stopPropagation()">
         <button type="button" class="close-button" aria-label="Cerrar resumen y volver al inicio" (click)="dismiss()">×</button>
         <span class="success-icon" aria-hidden="true">✓</span>
@@ -52,10 +52,38 @@ import { environment } from '../../../environments/environment';
     .close-link { display:block; margin:14px auto 0; border:0; background:none; padding:6px; color:#44534b; font-weight:650; text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
   `]
 })
-export class BookingSummaryModalComponent {
+export class BookingSummaryModalComponent implements AfterViewInit, OnDestroy {
   @Input({ required: true }) booking!: Booking;
   @Output() closed = new EventEmitter<void>();
   printError = '';
+  private previouslyFocused: HTMLElement | null = null;
+
+  constructor(private readonly host: ElementRef<HTMLElement>) {}
+
+  ngAfterViewInit(): void {
+    this.previouslyFocused = document.activeElement as HTMLElement | null;
+    this.host.nativeElement.querySelector<HTMLElement>('.close-button')?.focus();
+  }
+
+  ngOnDestroy(): void {
+    this.previouslyFocused?.focus?.();
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  onKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      this.dismiss();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const items = Array.from(this.host.nativeElement.querySelectorAll<HTMLElement>('button, a[href]'));
+    if (!items.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    const active = document.activeElement;
+    if (event.shiftKey && active === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && active === last) { event.preventDefault(); first.focus(); }
+  }
 
   get whatsAppLink(): string {
     return `https://wa.me/${environment.whatsappNumber}?text=${encodeURIComponent(this.message)}`;
@@ -151,7 +179,7 @@ export class BookingSummaryModalComponent {
           <style>
             *{box-sizing:border-box}body{margin:0;background:#f3f2ed;padding:32px;color:#17221f;font:15px/1.5 Arial,sans-serif}
             main{width:min(100%,680px);margin:auto;border:1px solid #dce1da;border-radius:8px;background:#fff;padding:38px}
-            .brand{color:#183b32;font:700 15px Arial,sans-serif;letter-spacing:2px}.eyebrow{margin:32px 0 6px;color:#a84e2c;font-size:11px;font-weight:bold;letter-spacing:2px;text-transform:uppercase}
+            .brand{color:#183b32;font:700 15px Arial,sans-serif;letter-spacing:2px}.eyebrow{margin:32px 0 6px;color:#a84e2c;font-size:12px;font-weight:bold;letter-spacing:2px;text-transform:uppercase}
             h1{margin:0;color:#183b32;font:500 34px Georgia,serif}.intro{color:#59635d}.code{margin:22px 0;border-radius:4px;background:#edf2ed;padding:14px;color:#183b32;font-weight:bold;overflow-wrap:anywhere}
             dl{margin:22px 0;border-top:1px solid #e3e6df}dl div{display:flex;justify-content:space-between;gap:20px;border-bottom:1px solid #e3e6df;padding:13px 0}
             dt{color:#59635d}dd{margin:0;text-align:right;font-weight:bold}.total dd{color:#183b32;font-size:20px}.note{margin-top:22px;color:#59635d;font-size:12px}

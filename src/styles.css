@@ -22,6 +22,12 @@ button, input, select, textarea { font: inherit; }
 a { color: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
 :focus-visible { outline: 3px solid #bd6a45; outline-offset: 3px; }
+main:focus { outline: none; }
+button, select, [role="button"] { min-height: 44px; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
 .page-shell { width: min(1160px, calc(100% - 40px)); margin-inline: auto; }
 .eyebrow { color: var(--clay); font-size: .73rem; font-weight: 800; letter-spacing: .17em; text-transform: uppercase; }
 .section-title { margin: .7rem 0 1rem; color: var(--forest); font-family: Georgia, "Times New Roman", serif; font-size: clamp(2rem, 4vw, 3.5rem); font-weight: 500; line-height: 1.08; letter-spacing: -.035em; }
@@ -46,7 +52,7 @@ app-about .flag-chile { background: linear-gradient(#0039a6,#0039a6) top left/38
 app-about .flag-peru { background: linear-gradient(to right,#d91023 0 33.33%,#fff 33.33% 66.66%,#d91023 66.66%); }
 app-about .review-modal { display: grid; grid-template-columns: 150px minmax(0,1fr); gap: 18px 24px; box-shadow: 0 18px 70px #0003; }
 app-about .review-modal-author { padding-top: 16px; }
-app-about .review-platform,app-about .review-modal-date { display: block; margin-top: 10px; color: #68716b; font-size: 11px; line-height: 1.5; }
+app-about .review-platform,app-about .review-modal-date { display: block; margin-top: 10px; color: #68716b; font-size: 12px; line-height: 1.5; }
 app-about .review-modal-topline { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin: 14px 20px 12px 0; color: #27372f; font-size: 19px; font-weight: 700; }
 app-about .review-modal-topline .individual-score { flex: none; }
 app-about .review-modal-copy { align-self: start; }

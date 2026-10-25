@@ -78,7 +78,7 @@ import { RoomService } from '../../services/room.service';
     .strength-icon svg{width:21px;height:21px;fill:currentColor}
     .strength-card strong,.strength-card small{display:block}
     .strength-card strong{color:#27372f;font-size:13px}
-    .strength-card small{margin-top:4px;color:#66716a;font-size:11px;line-height:1.4}
+    .strength-card small{margin-top:4px;color:#66716a;font-size:12px;line-height:1.4}
     .property-summary{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:25px;margin-top:22px}
     .property-description{color:#4f5b53;font-size:14px;line-height:1.75}
     .property-description p{margin:0 0 12px}
@@ -87,7 +87,7 @@ import { RoomService } from '../../services/room.service';
     .location-score{align-self:start;border-radius:7px;background:#edf3fa;padding:17px;color:#283b4c;font-size:13px}
     .location-score p{margin:0 0 15px;line-height:1.6}
     .location-score div{display:flex;justify-content:space-between;gap:10px;margin:8px 0}
-    .location-score small{display:block;margin-top:13px;color:#566675;font-size:10px;line-height:1.5}
+    .location-score small{display:block;margin-top:13px;color:#566675;font-size:12px;line-height:1.5}
     @media(max-width:760px){.strength-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.property-summary{grid-template-columns:1fr}}
     @media(max-width:440px){.strength-cards{grid-template-columns:1fr}.highlights-section{padding-block:28px 40px}}
   `]
