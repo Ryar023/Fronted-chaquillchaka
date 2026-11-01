@@ -40,7 +40,9 @@ import { filter } from 'rxjs';
         <span class="footer-copyright">© {{ currentYear }} Chaquill Chak'a Hostal · Cusco, Perú</span>
       </div>
     </footer>
-    <app-whatsapp-floating-button></app-whatsapp-floating-button>
+    <aside aria-label="Contacto por WhatsApp">
+      <app-whatsapp-floating-button></app-whatsapp-floating-button>
+    </aside>
   `,
   styles: [`
     .site-footer { background:var(--paper); border-top:1px solid #e5e6df; padding:28px 0; color:var(--forest); }

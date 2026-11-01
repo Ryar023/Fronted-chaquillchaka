@@ -37,7 +37,7 @@ import { RoomService } from '../../services/room.service';
         <ul class="mt-5 flex flex-wrap gap-2 p-0" aria-label="Servicios incluidos">
           <li *ngFor="let service of room.services" class="service-badge">{{ service }}</li>
         </ul>
-        <section class="occupied" aria-label="Disponibilidad de la habitación" aria-live="polite">
+        <section class="occupied" [attr.aria-label]="'Disponibilidad de ' + room.name" aria-live="polite">
           <p *ngIf="!occupied.length" class="occupied-free">Sin reservas próximas registradas.</p>
           <ng-container *ngIf="occupied.length">
             <p class="occupied-title">Fechas ya reservadas</p>
