@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectorRef, Component, HostListener, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output } from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { BookingSummaryModalComponent } from '../../components/booking-summary-modal/booking-summary-modal.component';
@@ -15,7 +15,7 @@ import { environment } from '../../../environments/environment';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterModule, BookingSummaryModalComponent],
   template: `
-    <section class="page-banner">
+    <section *ngIf="!embedded" class="page-banner">
       <div class="page-shell py-14 sm:py-20">
         <p class="eyebrow">Reserva directa · Sin intermediarios</p>
         <h1 class="section-title">Haz una reservación</h1>
@@ -23,7 +23,7 @@ import { environment } from '../../../environments/environment';
                 <button *ngIf="!formOpen" type="button" class="primary-button open-form-button mt-5" (click)="openForm()">Abrir formulario de reserva</button>
               </div>
             </section>
-            <section class="page-shell booking-layout">
+            <section [class.page-shell]="!embedded" class="booking-layout">
               <div *ngIf="formOpen && !confirmedBooking" class="form-backdrop" (click)="closeForm()">
               <div class="booking-card surface-card" role="dialog" aria-modal="true" aria-labelledby="booking-form-title" (click)="$event.stopPropagation()">
                 <button type="button" class="form-close" aria-label="Cerrar formulario de reserva" (click)="closeForm()">×</button>
@@ -193,7 +193,7 @@ import { environment } from '../../../environments/environment';
         </form>
       </div>
       </div>
-      <aside class="booking-aside">
+      <aside *ngIf="!embedded" class="booking-aside">
         <div class="aside-photo" role="img" aria-label="Habitación cómoda del hostal"></div>
         <h2 class="mt-6 font-serif text-2xl font-medium text-forest">Una estancia a tu ritmo</h2>
         <p class="leading-7 text-stone-600">Estamos en el centro histórico de Cusco, con Wi-Fi, baño privado y atención cercana para acompañar tu viaje.</p>
@@ -218,6 +218,9 @@ import { environment } from '../../../environments/environment';
   `]
 })
 export class BookingComponent implements OnInit, OnDestroy {
+  @Input() embedded = false;
+  @Input() roomId: string | null = null;
+  @Output() closed = new EventEmitter<void>();
   formOpen = true;
   private opener: HTMLElement | null = null;
   rooms: Room[] = [];
@@ -270,6 +273,7 @@ export class BookingComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     document.body.style.overflow = '';
+    if (this.embedded) this.opener?.focus?.();
   }
 
   openForm(): void {
@@ -280,6 +284,7 @@ export class BookingComponent implements OnInit, OnDestroy {
   }
 
   closeForm(): void {
+    if (this.embedded) { this.closed.emit(); return; }
     this.formOpen = false;
     document.body.style.overflow = '';
     setTimeout(() => (this.opener?.isConnected ? this.opener : document.querySelector<HTMLElement>('.open-form-button'))?.focus());
@@ -336,10 +341,15 @@ export class BookingComponent implements OnInit, OnDestroy {
         control.updateValueAndValidity();
       });
     });
-    this.route.queryParamMap.subscribe((queryParams) => {
-      this.requestedRoomId = queryParams.get('roomId');
-      if (!this.loadingRooms) this.applyRequestedRoom();
-    });
+    if (this.embedded) {
+      this.opener = document.activeElement as HTMLElement | null;
+      this.requestedRoomId = this.roomId;
+    } else {
+      this.route.queryParamMap.subscribe((queryParams) => {
+        this.requestedRoomId = queryParams.get('roomId');
+        if (!this.loadingRooms) this.applyRequestedRoom();
+      });
+    }
     this.bookingForm.valueChanges.subscribe(() => this.refreshQr());
     this.loadRooms();
     this.roomService.refreshOccupancy().subscribe((items) => this.occupancy = items);
@@ -526,6 +536,7 @@ export class BookingComponent implements OnInit, OnDestroy {
 
   closeConfirmation(): void {
     this.confirmedBooking = null;
+    if (this.embedded) { this.closed.emit(); return; }
     void this.router.navigateByUrl('/inicio');
   }
 

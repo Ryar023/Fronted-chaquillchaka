@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs';
@@ -40,6 +40,7 @@ import { filter } from 'rxjs';
         <span class="footer-copyright">© {{ currentYear }} Chaquill Chak'a Hostal · Cusco, Perú</span>
       </div>
     </footer>
+    <app-booking *ngIf="bookingOpen" [embedded]="true" [roomId]="bookingRoomId" (closed)="closeBooking()"></app-booking>
     <aside aria-label="Contacto por WhatsApp">
       <app-whatsapp-floating-button></app-whatsapp-floating-button>
     </aside>
@@ -66,9 +67,28 @@ export class AppComponent implements OnInit {
   readonly currentYear = new Date().getFullYear();
   routeAnnouncement = '';
 
-  constructor(private readonly router: Router, private readonly title: Title) {}
+  bookingOpen = false;
+  bookingRoomId: string | null = null;
+
+  constructor(private readonly router: Router, private readonly title: Title, private readonly cdr: ChangeDetectorRef) {}
+
+  closeBooking(): void {
+    this.bookingOpen = false;
+    this.cdr.detectChanges();
+  }
 
   ngOnInit(): void {
+    // Fase de captura para abrir la reserva como ventana flotante antes de que el routerLink navegue.
+    document.addEventListener('click', (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey) return;
+      const link = (event.target as HTMLElement | null)?.closest?.('a[href]') as HTMLAnchorElement | null;
+      if (!link || link.origin !== location.origin || link.pathname !== '/reserva' || location.pathname === '/reserva') return;
+      event.preventDefault();
+      event.stopPropagation();
+      this.bookingRoomId = new URLSearchParams(link.search).get('roomId');
+      this.bookingOpen = true;
+      this.cdr.detectChanges();
+    }, true);
     let firstNavigation = true;
     this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe(() => {
       if (firstNavigation) {
