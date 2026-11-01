@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { BookingSummaryModalComponent } from '../../components/booking-summary-modal/booking-summary-modal.component';
@@ -20,14 +20,17 @@ import { environment } from '../../../environments/environment';
         <p class="eyebrow">Reserva directa · Sin intermediarios</p>
         <h1 class="section-title">Haz una reservación</h1>
         <p class="max-w-2xl leading-7 text-stone-600">Cuéntanos cuándo vienes. Revisaremos la disponibilidad y te mostraremos el resumen de tu estancia.</p>
-      </div>
-    </section>
-    <section class="page-shell booking-layout">
-      <div class="booking-card surface-card">
-        <div class="mb-7 border-b border-stone-200 pb-5">
-          <p class="eyebrow">Tus datos de viaje</p>
-          <h2 class="m-0 mt-2 font-serif text-2xl font-medium text-forest">Completa tu solicitud</h2>
-        </div>
+                <button *ngIf="!formOpen" type="button" class="primary-button open-form-button mt-5" (click)="openForm()">Abrir formulario de reserva</button>
+              </div>
+            </section>
+            <section class="page-shell booking-layout">
+              <div *ngIf="formOpen && !confirmedBooking" class="form-backdrop" (click)="closeForm()">
+              <div class="booking-card surface-card" role="dialog" aria-modal="true" aria-labelledby="booking-form-title" (click)="$event.stopPropagation()">
+                <button type="button" class="form-close" aria-label="Cerrar formulario de reserva" (click)="closeForm()">×</button>
+                <div class="mb-7 border-b border-stone-200 pb-5 pr-10">
+                  <p class="eyebrow">Tus datos de viaje</p>
+                  <h2 id="booking-form-title" class="m-0 mt-2 font-serif text-2xl font-medium text-forest">Completa tu solicitud</h2>
+                </div>
         <div *ngIf="loadingRooms" class="mb-5 rounded bg-stone-50 p-4 text-sm text-stone-700" role="status" aria-live="polite">
           Cargando habitaciones disponibles…
         </div>
@@ -189,6 +192,7 @@ import { environment } from '../../../environments/environment';
           </button>
         </form>
       </div>
+      </div>
       <aside class="booking-aside">
         <div class="aside-photo" role="img" aria-label="Habitación cómoda del hostal"></div>
         <h2 class="mt-6 font-serif text-2xl font-medium text-forest">Una estancia a tu ritmo</h2>
@@ -199,8 +203,10 @@ import { environment } from '../../../environments/environment';
     <app-booking-summary-modal *ngIf="confirmedBooking" [booking]="confirmedBooking" (closed)="closeConfirmation()"></app-booking-summary-modal>
   `,
   styles: [`
-    .page-banner{background:#f2f1eb}.booking-layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(250px,.65fr);gap:clamp(28px,7vw,90px);align-items:start;padding-block:54px 90px}
-    .booking-card{padding:clamp(21px,4vw,42px)}.field{display:flex;flex-direction:column;gap:8px;color:#26362e;font-size:13px;font-weight:700}
+    .page-banner{background:#f2f1eb}.booking-layout{padding-block:54px 90px}.booking-aside{max-width:640px}
+    .form-backdrop{position:fixed;inset:0;z-index:60;display:grid;overflow-y:auto;place-items:start center;background:#101b16b8;padding:20px}
+    .booking-card{position:relative;width:min(100%,760px);margin:auto;padding:clamp(21px,4vw,42px)}
+    .form-close{position:absolute;top:10px;right:12px;width:44px;height:44px;border:0;background:transparent;color:#47534c;font-size:28px;cursor:pointer}.field{display:flex;flex-direction:column;gap:8px;color:#26362e;font-size:13px;font-weight:700}
     .field>span>span{color:#a12e21}.field-error{font-weight:500}.booking-aside{padding-top:7px}.aside-photo{height:215px;border-radius:6px;background-color:#ded8cb;background-image:url('/assets/images/slide_habitacion.jpg');background-position:center;background-size:cover}
     .estimate-card{border:1px solid #dfe5dc;border-radius:6px;background:#f8faf7;padding:16px}.estimate-heading{display:flex;align-items:center;gap:11px}.estimate-icon{display:grid;width:30px;height:30px;place-items:center;border-radius:50%;background:#e5efe7;color:#183b32;font-weight:800}.estimate-line{display:flex;justify-content:space-between;gap:14px;margin-top:16px;border-top:1px solid #e1e6de;padding-top:13px;font-size:13px;color:#455149}.estimate-line strong{color:#183b32}.estimate-note{margin:10px 0 0;color:#606b63;font-size:12px;line-height:1.5}
     .payment-options{min-width:0;margin:0;border:0;padding:0}.payment-options legend{color:#26362e;font-size:13px;font-weight:700}.payment-options>p{margin:6px 0 12px;color:#59635d;font-size:12px;line-height:1.5}.payment-choice-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.payment-choice-grid label{position:relative;display:flex;min-height:54px;align-items:center;gap:7px;border:1px solid #d8ded7;border-radius:5px;background:#fff;padding:9px;color:#26362e;font-size:12px;cursor:pointer}.payment-choice-grid input{accent-color:#183b32}.payment-choice-grid label>span{display:grid;width:25px;height:25px;flex:none;place-items:center;border-radius:50%;background:#edf3ed;color:#183b32;font-size:12px;font-weight:800}.payment-choice-grid label small{margin-left:auto;color:#657168;font-size:12px}.payment-currency{max-width:260px;margin-top:13px}.payment-note{display:block;margin-top:10px;color:#606b63;font-size:12px;line-height:1.5}
@@ -211,7 +217,9 @@ import { environment } from '../../../environments/environment';
     .doc-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.invoice-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px}.invoice-wide{grid-column:1/-1}@media(max-width:520px){.invoice-fields{grid-template-columns:1fr}}
   `]
 })
-export class BookingComponent implements OnInit {
+export class BookingComponent implements OnInit, OnDestroy {
+  formOpen = true;
+  private opener: HTMLElement | null = null;
   rooms: Room[] = [];
   loadingRooms = true;
   submitting = false;
@@ -260,7 +268,43 @@ export class BookingComponent implements OnInit {
     private readonly bookingService: BookingService
   ) {}
 
+  ngOnDestroy(): void {
+    document.body.style.overflow = '';
+  }
+
+  openForm(): void {
+    this.opener = document.activeElement as HTMLElement | null;
+    this.formOpen = true;
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => document.getElementById('booking-name')?.focus());
+  }
+
+  closeForm(): void {
+    this.formOpen = false;
+    document.body.style.overflow = '';
+    setTimeout(() => (this.opener?.isConnected ? this.opener : document.querySelector<HTMLElement>('.open-form-button'))?.focus());
+    this.opener = null;
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  onKeydown(event: KeyboardEvent): void {
+    if (!this.formOpen || this.confirmedBooking) return;
+    if (event.key === 'Escape') { this.closeForm(); return; }
+    if (event.key !== 'Tab') return;
+    const dialog = document.querySelector<HTMLElement>('.booking-card');
+    const items = Array.from(dialog?.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])') ?? [])
+      .filter((item) => item.offsetParent !== null);
+    if (!items.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    const active = document.activeElement;
+    if (event.shiftKey && active === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && active === last) { event.preventDefault(); first.focus(); }
+  }
+
   ngOnInit(): void {
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => document.getElementById('booking-name')?.focus());
     this.rooms = this.roomService.getCachedRooms();
     this.loadingRooms = this.rooms.length === 0;
     this.bookingForm.controls.checkIn.valueChanges.subscribe((checkIn) => {
