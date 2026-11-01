@@ -192,12 +192,12 @@ import { RouterModule } from '@angular/router';
     .category-card strong{color:#183b32;font-size:15px}
     .score-track{grid-column:1/-1;height:5px;overflow:hidden;border-radius:9px;background:#e7ebe5}
     .score-track span{display:block;height:100%;border-radius:9px;background:#a84e2c}
-    .review-source{margin-top:23px;border-top:1px solid #dedfd8;padding-top:16px;font-size:12px;line-height:1.6;color:#59635d}
+    .review-source{margin-top:23px;border-top:1px solid #dedfd8;padding-top:16px;font-size:12px;line-height:1.6;color:#59635d}.review-source a{display:inline-flex;align-items:center;min-height:44px}
     .comments-heading{display:flex;justify-content:space-between;align-items:end;gap:20px;margin:35px 0 15px}
     .comments-heading .eyebrow{margin:0 0 5px}
     .comments-heading h3{margin:0;color:#183b32;font-size:1.55rem;font-weight:600}
     .comment-controls{display:flex;gap:8px}
-    .comment-controls button{width:38px;height:38px;border:1px solid #dfe4dd;border-radius:50%;background:white;color:#183b32;font-size:24px;line-height:1;cursor:pointer}
+    .comment-controls button{width:44px;height:44px;border:1px solid #dfe4dd;border-radius:50%;background:white;color:#183b32;font-size:24px;line-height:1;cursor:pointer}
     .review-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
     .review-card{border:1px solid #e1e3dc;border-radius:6px;background:white;padding:14px}
     .review-author{display:flex;align-items:center;gap:10px}
