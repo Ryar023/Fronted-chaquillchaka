@@ -14,11 +14,11 @@ import { AccessibilitySpeechComponent } from './accessibility-speech.component';
         #accessibilityTrigger
         class="accessibility-trigger"
         type="button"
+        aria-label="Accesibilidad"
         aria-controls="accessibility-panel"
         [attr.aria-expanded]="accessibilityOpen"
         (click)="accessibilityOpen = !accessibilityOpen">
         <svg aria-hidden="true" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4" r="2"></circle><path d="M4 8l8 2 8-2M12 10v5m-4 6 4-6 4 6"></path></svg>
-        <span>Accesibilidad</span>
       </button>
       <section [hidden]="!accessibilityOpen" id="accessibility-panel" class="accessibility-panel" aria-labelledby="accessibility-title">
         <h2 id="accessibility-title">Opciones de accesibilidad</h2>
@@ -37,6 +37,15 @@ import { AccessibilitySpeechComponent } from './accessibility-speech.component';
         </button>
         <button class="accessibility-option" type="button" [attr.aria-pressed]="distinguishStates" (click)="toggleDistinguishStates()">
           Distinguir enlaces y estados: {{ distinguishStates ? 'activado' : 'desactivado' }}
+        </button>
+        <button class="accessibility-option" type="button" [attr.aria-pressed]="highlightLinks" (click)="toggleHighlightLinks()">
+          Resaltar enlaces: {{ highlightLinks ? 'activado' : 'desactivado' }}
+        </button>
+        <button class="accessibility-option" type="button" [attr.aria-pressed]="textSpacing" (click)="toggleTextSpacing()">
+          Espaciado de texto: {{ textSpacing ? 'activado' : 'desactivado' }}
+        </button>
+        <button class="accessibility-option" type="button" [attr.aria-pressed]="accessibleFont" (click)="toggleAccessibleFont()">
+          Fuente sans-serif: {{ accessibleFont ? 'activada' : 'desactivada' }}
         </button>
         <p>Ayuda a distinguir enlaces y estados sin depender solo del color; puede ser útil para personas con daltonismo.</p>
         <app-accessibility-speech></app-accessibility-speech>
@@ -83,10 +92,11 @@ import { AccessibilitySpeechComponent } from './accessibility-speech.component';
     </aside>
   `,
   styles: [`
-    .accessibility-tools { position:fixed; top:88px; right:16px; z-index:49; }
+    .accessibility-tools { position:fixed; bottom:16px; right:16px; z-index:49; }
     .accessibility-trigger,.accessibility-panel button { min-height:44px; border:2px solid var(--forest); border-radius:5px; background:#fff; padding:9px 13px; color:var(--forest); font:inherit; font-weight:700; cursor:pointer; }
-    .accessibility-trigger { display:inline-flex; align-items:center; gap:8px; background:var(--forest); color:#fff; }
-    .accessibility-panel { display:grid; gap:12px; width:min(340px,calc(100vw - 32px)); max-height:calc(100vh - 150px); overflow:auto; margin-top:8px; border:2px solid var(--forest); border-radius:8px; background:#fff; padding:16px; color:#17221f; box-shadow:0 8px 30px #0003; }
+    .accessibility-trigger { display:grid; place-items:center; width:56px; height:56px; border-radius:50%; background:var(--forest); color:#fff; box-shadow:0 6px 22px #15291f35; }
+    .accessibility-trigger svg { width:30px; height:30px; }
+    .accessibility-panel { position:absolute; right:0; bottom:64px; display:grid; gap:12px; width:min(340px,calc(100vw - 32px)); max-height:calc(100dvh - 100px); overflow:auto; border:2px solid var(--forest); border-radius:8px; background:#fff; padding:16px; color:#17221f; box-shadow:0 8px 30px #0003; }
     .accessibility-panel[hidden] { display:none; }
     .accessibility-panel h2 { margin:0; font-size:1.15rem; }
     .accessibility-panel p { margin:0; font-size:.9rem; line-height:1.5; }
@@ -107,7 +117,7 @@ import { AccessibilitySpeechComponent } from './accessibility-speech.component';
     .footer-contact a { color:var(--forest); text-decoration:underline; text-underline-offset:3px; }
     .footer-copyright { grid-column:1/-1; border-top:1px solid #e5e6df; padding-top:14px; color:var(--muted); font-size:12px; text-align:center; }
     @media(max-width:620px) {
-      .accessibility-tools { top:82px; right:10px; }
+      .accessibility-tools { right:10px; bottom:10px; }
       .footer-content { grid-template-columns:1fr 1fr; }
       .footer-logo { justify-self:end; }
       .footer-contact { grid-column:1/-1; align-items:center; text-align:center; }
@@ -123,6 +133,9 @@ export class AppComponent implements OnInit {
   highContrast = false;
   reducedMotion = false;
   distinguishStates = false;
+  highlightLinks = false;
+  textSpacing = false;
+  accessibleFont = false;
   storageError = '';
 
   bookingOpen = false;
@@ -142,6 +155,9 @@ export class AppComponent implements OnInit {
       this.highContrast = localStorage.getItem('chaquill-a11y-high-contrast') === 'true';
       this.reducedMotion = localStorage.getItem('chaquill-a11y-reduced-motion') === 'true';
       this.distinguishStates = localStorage.getItem('chaquill-a11y-distinguish-states') === 'true';
+      this.highlightLinks = localStorage.getItem('chaquill-a11y-highlight-links') === 'true';
+      this.textSpacing = localStorage.getItem('chaquill-a11y-text-spacing') === 'true';
+      this.accessibleFont = localStorage.getItem('chaquill-a11y-accessible-font') === 'true';
     } catch (error) {
       this.reportStorageError(error);
     }
@@ -204,11 +220,32 @@ export class AppComponent implements OnInit {
     this.applyAccessibilitySettings();
   }
 
+  toggleHighlightLinks(): void {
+    this.highlightLinks = !this.highlightLinks;
+    this.saveAccessibility();
+    this.applyAccessibilitySettings();
+  }
+
+  toggleTextSpacing(): void {
+    this.textSpacing = !this.textSpacing;
+    this.saveAccessibility();
+    this.applyAccessibilitySettings();
+  }
+
+  toggleAccessibleFont(): void {
+    this.accessibleFont = !this.accessibleFont;
+    this.saveAccessibility();
+    this.applyAccessibilitySettings();
+  }
+
   resetAccessibility(): void {
     this.fontScale = 100;
     this.highContrast = false;
     this.reducedMotion = false;
     this.distinguishStates = false;
+    this.highlightLinks = false;
+    this.textSpacing = false;
+    this.accessibleFont = false;
     this.speech?.reset();
     this.saveAccessibility();
     this.applyAccessibilitySettings();
@@ -220,6 +257,9 @@ export class AppComponent implements OnInit {
       localStorage.setItem('chaquill-a11y-high-contrast', String(this.highContrast));
       localStorage.setItem('chaquill-a11y-reduced-motion', String(this.reducedMotion));
       localStorage.setItem('chaquill-a11y-distinguish-states', String(this.distinguishStates));
+      localStorage.setItem('chaquill-a11y-highlight-links', String(this.highlightLinks));
+      localStorage.setItem('chaquill-a11y-text-spacing', String(this.textSpacing));
+      localStorage.setItem('chaquill-a11y-accessible-font', String(this.accessibleFont));
       this.storageError = '';
     } catch (error) {
       this.reportStorageError(error);
@@ -241,5 +281,8 @@ export class AppComponent implements OnInit {
     root.classList.toggle('a11y-high-contrast', this.highContrast);
     root.classList.toggle('a11y-reduced-motion', this.reducedMotion);
     root.classList.toggle('a11y-distinguish-states', this.distinguishStates);
+    document.body.classList.toggle('a11y-highlight-links', this.highlightLinks);
+    document.body.classList.toggle('a11y-text-spacing', this.textSpacing);
+    document.body.classList.toggle('a11y-accessible-font', this.accessibleFont);
   }
 }
