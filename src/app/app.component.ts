@@ -1,7 +1,8 @@
-import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, ViewChild } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs';
+import { AccessibilitySpeechComponent } from './accessibility-speech.component';
 
 @Component({
   selector: 'app-root',
@@ -16,7 +17,8 @@ import { filter } from 'rxjs';
         aria-controls="accessibility-panel"
         [attr.aria-expanded]="accessibilityOpen"
         (click)="accessibilityOpen = !accessibilityOpen">
-        Accesibilidad
+        <svg aria-hidden="true" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4" r="2"></circle><path d="M4 8l8 2 8-2M12 10v5m-4 6 4-6 4 6"></path></svg>
+        <span>Accesibilidad</span>
       </button>
       <section [hidden]="!accessibilityOpen" id="accessibility-panel" class="accessibility-panel" aria-labelledby="accessibility-title">
         <h2 id="accessibility-title">Opciones de accesibilidad</h2>
@@ -33,9 +35,14 @@ import { filter } from 'rxjs';
         <button class="accessibility-option" type="button" [attr.aria-pressed]="reducedMotion" (click)="toggleReducedMotion()">
           Reducir movimiento: {{ reducedMotion ? 'activado' : 'desactivado' }}
         </button>
+        <button class="accessibility-option" type="button" [attr.aria-pressed]="distinguishStates" (click)="toggleDistinguishStates()">
+          Distinguir enlaces y estados: {{ distinguishStates ? 'activado' : 'desactivado' }}
+        </button>
+        <p>Ayuda a distinguir enlaces y estados sin depender solo del color; puede ser útil para personas con daltonismo.</p>
+        <app-accessibility-speech></app-accessibility-speech>
         <button class="accessibility-reset" type="button" (click)="resetAccessibility()">Restablecer opciones</button>
         <p *ngIf="storageError" role="alert">{{ storageError }}</p>
-        <p>Las ayudas del sistema, como el lector de pantalla y la lupa, se activan desde los ajustes del dispositivo o del navegador. Una página web no puede abrirlos ni activarlos por sí sola.</p>
+        <p>El lector de pantalla y la lupa del dispositivo se activan desde sus propios ajustes.</p>
       </section>
     </aside>
     <main id="contenido" tabindex="-1">
@@ -78,7 +85,7 @@ import { filter } from 'rxjs';
   styles: [`
     .accessibility-tools { position:fixed; top:88px; right:16px; z-index:49; }
     .accessibility-trigger,.accessibility-panel button { min-height:44px; border:2px solid var(--forest); border-radius:5px; background:#fff; padding:9px 13px; color:var(--forest); font:inherit; font-weight:700; cursor:pointer; }
-    .accessibility-trigger { background:var(--forest); color:#fff; }
+    .accessibility-trigger { display:inline-flex; align-items:center; gap:8px; background:var(--forest); color:#fff; }
     .accessibility-panel { display:grid; gap:12px; width:min(340px,calc(100vw - 32px)); max-height:calc(100vh - 150px); overflow:auto; margin-top:8px; border:2px solid var(--forest); border-radius:8px; background:#fff; padding:16px; color:#17221f; box-shadow:0 8px 30px #0003; }
     .accessibility-panel[hidden] { display:none; }
     .accessibility-panel h2 { margin:0; font-size:1.15rem; }
@@ -108,12 +115,14 @@ import { filter } from 'rxjs';
   `]
 })
 export class AppComponent implements OnInit {
+  @ViewChild(AccessibilitySpeechComponent) private speech?: AccessibilitySpeechComponent;
   readonly currentYear = new Date().getFullYear();
   routeAnnouncement = '';
   accessibilityOpen = false;
   fontScale = 100;
   highContrast = false;
   reducedMotion = false;
+  distinguishStates = false;
   storageError = '';
 
   bookingOpen = false;
@@ -132,6 +141,7 @@ export class AppComponent implements OnInit {
       if ([100, 115, 130, 150, 175, 200].includes(savedScale)) this.fontScale = savedScale;
       this.highContrast = localStorage.getItem('chaquill-a11y-high-contrast') === 'true';
       this.reducedMotion = localStorage.getItem('chaquill-a11y-reduced-motion') === 'true';
+      this.distinguishStates = localStorage.getItem('chaquill-a11y-distinguish-states') === 'true';
     } catch (error) {
       this.reportStorageError(error);
     }
@@ -188,10 +198,18 @@ export class AppComponent implements OnInit {
     this.applyAccessibilitySettings();
   }
 
+  toggleDistinguishStates(): void {
+    this.distinguishStates = !this.distinguishStates;
+    this.saveAccessibility();
+    this.applyAccessibilitySettings();
+  }
+
   resetAccessibility(): void {
     this.fontScale = 100;
     this.highContrast = false;
     this.reducedMotion = false;
+    this.distinguishStates = false;
+    this.speech?.reset();
     this.saveAccessibility();
     this.applyAccessibilitySettings();
   }
@@ -201,6 +219,7 @@ export class AppComponent implements OnInit {
       localStorage.setItem('chaquill-a11y-font-scale', String(this.fontScale));
       localStorage.setItem('chaquill-a11y-high-contrast', String(this.highContrast));
       localStorage.setItem('chaquill-a11y-reduced-motion', String(this.reducedMotion));
+      localStorage.setItem('chaquill-a11y-distinguish-states', String(this.distinguishStates));
       this.storageError = '';
     } catch (error) {
       this.reportStorageError(error);
@@ -221,5 +240,6 @@ export class AppComponent implements OnInit {
     root.classList.toggle('a11y-text-scale-200', this.fontScale === 200);
     root.classList.toggle('a11y-high-contrast', this.highContrast);
     root.classList.toggle('a11y-reduced-motion', this.reducedMotion);
+    root.classList.toggle('a11y-distinguish-states', this.distinguishStates);
   }
 }

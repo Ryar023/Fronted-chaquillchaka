@@ -50,6 +50,16 @@ html.a11y-high-contrast :is(h1,h2,h3,h4,h5,h6,p,span,label,legend,dt,dd,th,td,a,
 html.a11y-high-contrast :is(button,input,select,textarea) { border: 2px solid #000 !important; }
 html.a11y-high-contrast .menu-toggle span { background: #000 !important; }
 html.a11y-high-contrast .accessibility-option[aria-pressed="true"] { outline: 3px double #000; outline-offset: -6px; }
+html.a11y-reading-focus :focus-visible { text-decoration: underline 2px; text-underline-offset: 3px; outline: 3px solid #087ea4; outline-offset: 3px; }
+html.a11y-distinguish-states a { text-decoration: underline 2px !important; text-underline-offset: 3px; }
+html.a11y-distinguish-states [aria-invalid="true"] { border: 3px dashed #8c1d18 !important; }
+html.a11y-distinguish-states :is(input[type="checkbox"], input[type="radio"]):checked { outline: 3px solid #183b32; outline-offset: 2px; }
+html.a11y-distinguish-states [aria-pressed="true"] { outline: 3px double currentColor; outline-offset: -5px; }
+app-accessibility-speech { display: grid; gap: 12px; }
+app-accessibility-speech p { margin: 0; font-size: .9rem; line-height: 1.5; }
+app-accessibility-speech button { min-height: 44px; border: 2px solid #183b32; border-radius: 6px; background: #fff; padding: 9px 13px; color: #183b32; font: inherit; font-weight: 700; text-align: left; cursor: pointer; }
+app-accessibility-speech button[aria-pressed="true"] { background: #183b32; color: #fff; }
+app-accessibility-speech button:disabled { opacity: .55; cursor: not-allowed; }
 .page-shell { width: min(1160px, calc(100% - 40px)); margin-inline: auto; }
 .eyebrow { color: var(--clay); font-size: .75rem; font-weight: 800; letter-spacing: .17em; text-transform: uppercase; }
 .section-title { margin: .7rem 0 1rem; color: var(--forest); font-family: Georgia, "Times New Roman", serif; font-size: clamp(2rem, 4vw, 3.5rem); font-weight: 500; line-height: 1.08; letter-spacing: -.035em; }
