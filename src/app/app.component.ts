@@ -8,6 +8,36 @@ import { filter } from 'rxjs';
   standalone: false,
   template: `
     <app-navbar></app-navbar>
+    <aside class="accessibility-tools" aria-label="Herramientas de accesibilidad" (keydown.escape)="closeAccessibility($event, accessibilityTrigger)">
+      <button
+        #accessibilityTrigger
+        class="accessibility-trigger"
+        type="button"
+        aria-controls="accessibility-panel"
+        [attr.aria-expanded]="accessibilityOpen"
+        (click)="accessibilityOpen = !accessibilityOpen">
+        Accesibilidad
+      </button>
+      <section [hidden]="!accessibilityOpen" id="accessibility-panel" class="accessibility-panel" aria-labelledby="accessibility-title">
+        <h2 id="accessibility-title">Opciones de accesibilidad</h2>
+        <div class="text-size-control">
+          <span id="text-size-label">Ampliación de página: {{ fontScale }}%</span>
+          <div class="text-size-buttons" role="group" aria-labelledby="text-size-label">
+            <button type="button" aria-label="Disminuir ampliación" [disabled]="fontScale <= 100" (click)="changeFontScale(-1)">A−</button>
+            <button type="button" aria-label="Aumentar ampliación" [disabled]="fontScale >= 130" (click)="changeFontScale(1)">A+</button>
+          </div>
+        </div>
+        <button class="accessibility-option" type="button" [attr.aria-pressed]="highContrast" (click)="toggleHighContrast()">
+          Contraste reforzado: {{ highContrast ? 'activado' : 'desactivado' }}
+        </button>
+        <button class="accessibility-option" type="button" [attr.aria-pressed]="reducedMotion" (click)="toggleReducedMotion()">
+          Reducir movimiento: {{ reducedMotion ? 'activado' : 'desactivado' }}
+        </button>
+        <button class="accessibility-reset" type="button" (click)="resetAccessibility()">Restablecer opciones</button>
+        <p *ngIf="storageError" role="alert">{{ storageError }}</p>
+        <p>Las ayudas del sistema, como el lector de pantalla y la lupa, se activan desde los ajustes del dispositivo o del navegador. Una página web no puede abrirlos ni activarlos por sí sola.</p>
+      </section>
+    </aside>
     <main id="contenido" tabindex="-1">
       <router-outlet></router-outlet>
     </main>
@@ -46,6 +76,19 @@ import { filter } from 'rxjs';
     </aside>
   `,
   styles: [`
+    .accessibility-tools { position:fixed; top:88px; right:16px; z-index:49; }
+    .accessibility-trigger,.accessibility-panel button { min-height:44px; border:2px solid var(--forest); border-radius:5px; background:#fff; padding:9px 13px; color:var(--forest); font:inherit; font-weight:700; cursor:pointer; }
+    .accessibility-trigger { background:var(--forest); color:#fff; }
+    .accessibility-panel { display:grid; gap:12px; width:min(340px,calc(100vw - 32px)); max-height:calc(100vh - 150px); overflow:auto; margin-top:8px; border:2px solid var(--forest); border-radius:8px; background:#fff; padding:16px; color:#17221f; box-shadow:0 8px 30px #0003; }
+    .accessibility-panel[hidden] { display:none; }
+    .accessibility-panel h2 { margin:0; font-size:1.15rem; }
+    .accessibility-panel p { margin:0; font-size:.9rem; line-height:1.5; }
+    .text-size-control { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .text-size-buttons { display:flex; gap:8px; }
+    .accessibility-panel button:disabled { opacity:.55; cursor:not-allowed; }
+    .accessibility-panel .accessibility-option,.accessibility-panel .accessibility-reset { width:100%; text-align:left; }
+    .accessibility-panel .accessibility-option[aria-pressed="true"] { background:#183b32; color:#fff; }
+    .accessibility-panel .accessibility-reset { border-color:#59635d; color:#17221f; }
     .site-footer { background:var(--paper); border-top:1px solid #e5e6df; padding:28px 0; color:var(--forest); }
     .footer-content { display:grid; grid-template-columns:1fr auto 1fr; gap:20px 30px; align-items:center; }
     .footer-social { justify-self:start; }
@@ -57,6 +100,7 @@ import { filter } from 'rxjs';
     .footer-contact a { color:var(--forest); text-decoration:underline; text-underline-offset:3px; }
     .footer-copyright { grid-column:1/-1; border-top:1px solid #e5e6df; padding-top:14px; color:var(--muted); font-size:12px; text-align:center; }
     @media(max-width:620px) {
+      .accessibility-tools { top:82px; right:10px; }
       .footer-content { grid-template-columns:1fr 1fr; }
       .footer-logo { justify-self:end; }
       .footer-contact { grid-column:1/-1; align-items:center; text-align:center; }
@@ -66,6 +110,11 @@ import { filter } from 'rxjs';
 export class AppComponent implements OnInit {
   readonly currentYear = new Date().getFullYear();
   routeAnnouncement = '';
+  accessibilityOpen = false;
+  fontScale = 100;
+  highContrast = false;
+  reducedMotion = false;
+  storageError = '';
 
   bookingOpen = false;
   bookingRoomId: string | null = null;
@@ -78,6 +127,16 @@ export class AppComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    try {
+      const savedScale = Number(localStorage.getItem('chaquill-a11y-font-scale'));
+      if ([100, 115, 130].includes(savedScale)) this.fontScale = savedScale;
+      this.highContrast = localStorage.getItem('chaquill-a11y-high-contrast') === 'true';
+      this.reducedMotion = localStorage.getItem('chaquill-a11y-reduced-motion') === 'true';
+    } catch (error) {
+      this.reportStorageError(error);
+    }
+    this.applyAccessibilitySettings();
+
     // Fase de captura para abrir la reserva como ventana flotante antes de que el routerLink navegue.
     document.addEventListener('click', (event: MouseEvent) => {
       if (event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey) return;
@@ -100,5 +159,64 @@ export class AppComponent implements OnInit {
         document.getElementById('contenido')?.focus({ preventScroll: true });
       });
     });
+  }
+
+  closeAccessibility(event: Event, trigger: HTMLButtonElement): void {
+    if (!this.accessibilityOpen) return;
+    event.stopPropagation();
+    this.accessibilityOpen = false;
+    trigger.focus();
+  }
+
+  changeFontScale(direction: -1 | 1): void {
+    const scales = [100, 115, 130];
+    const currentIndex = scales.indexOf(this.fontScale);
+    this.fontScale = scales[Math.max(0, Math.min(scales.length - 1, currentIndex + direction))];
+    this.saveAccessibility();
+    this.applyAccessibilitySettings();
+  }
+
+  toggleHighContrast(): void {
+    this.highContrast = !this.highContrast;
+    this.saveAccessibility();
+    this.applyAccessibilitySettings();
+  }
+
+  toggleReducedMotion(): void {
+    this.reducedMotion = !this.reducedMotion;
+    this.saveAccessibility();
+    this.applyAccessibilitySettings();
+  }
+
+  resetAccessibility(): void {
+    this.fontScale = 100;
+    this.highContrast = false;
+    this.reducedMotion = false;
+    this.saveAccessibility();
+    this.applyAccessibilitySettings();
+  }
+
+  private saveAccessibility(): void {
+    try {
+      localStorage.setItem('chaquill-a11y-font-scale', String(this.fontScale));
+      localStorage.setItem('chaquill-a11y-high-contrast', String(this.highContrast));
+      localStorage.setItem('chaquill-a11y-reduced-motion', String(this.reducedMotion));
+      this.storageError = '';
+    } catch (error) {
+      this.reportStorageError(error);
+    }
+  }
+
+  private reportStorageError(error: unknown): void {
+    console.error('No se pudieron guardar o cargar las preferencias de accesibilidad.', error);
+    this.storageError = 'No se pudieron guardar las preferencias en este navegador. Se aplicarán solo durante esta visita.';
+  }
+
+  private applyAccessibilitySettings(): void {
+    const root = document.documentElement;
+    root.classList.toggle('a11y-text-scale-115', this.fontScale === 115);
+    root.classList.toggle('a11y-text-scale-130', this.fontScale === 130);
+    root.classList.toggle('a11y-high-contrast', this.highContrast);
+    root.classList.toggle('a11y-reduced-motion', this.reducedMotion);
   }
 }
