@@ -6,6 +6,7 @@ import { getRoomImageUrl } from '../../models/room-image';
 import { RoomService } from '../../services/room.service';
 
 type HotspotId = 'bed' | 'bath' | 'patio';
+type SceneId = 'room' | 'bathroom' | 'shower' | 'breakfast' | 'patio';
 
 interface TourHotspot {
   id: HotspotId;
@@ -25,8 +26,7 @@ interface TourHotspot {
       <div class="page-shell">
         <p class="eyebrow">Explora antes de reservar</p>
         <h1 class="section-title">Vista inmersiva de las habitaciones</h1>
-        <p>Explora la habitación Simple en 360°: arrastra la imagen, usa las flechas del teclado o los controles accesibles. Las demás habitaciones muestran fotografías mientras preparamos sus panoramas.</p>
-        <p class="tour-disclosure"><strong>Transparencia:</strong> son imágenes conceptuales generadas por IA para un prototipo, no fotografías reales ni un escaneo WebAR del hostal. Las medidas exactas de las camas y la vista al patio no están confirmadas.</p>
+        <p>Elige una habitación o ambiente y explóralo en 360°. Arrastra la imagen, usa las flechas del teclado o los controles accesibles. Abre el visor para verlo a pantalla completa.</p>
       </div>
     </section>
 
@@ -50,13 +50,25 @@ interface TourHotspot {
           </button>
         </div>
 
+        <div class="scene-picker" role="group" aria-label="Selecciona un ambiente panorámico">
+          <button
+            *ngFor="let scene of scenes"
+            class="scene-picker-button"
+            type="button"
+            [attr.aria-pressed]="activeSceneId === scene.id"
+            (click)="selectScene(scene.id)">
+            {{ scene.label }}
+          </button>
+        </div>
+
         <section *ngIf="selectedRoom as room" class="tour-layout" aria-label="Recorrido de la habitación">
           <div class="tour-viewer-column">
             <div
               class="tour-viewer"
+              [class.tour-viewer-expanded]="isExpanded"
               role="region"
               tabindex="0"
-              [attr.aria-label]="'Visor interactivo de ' + room.name + (has360Panorama ? ' en panorama 360 grados. Usa las flechas izquierda y derecha para girar.' : '. Usa las flechas izquierda y derecha o los botones para explorar la fotografía.')"
+              [attr.aria-label]="'Visor interactivo 360 grados de ' + activeSceneLabel + '. Usa las flechas para girar e inclinar la vista.'"
               (pointerdown)="startDrag($event)"
               (pointerup)="endDrag($event)"
               (pointercancel)="cancelDrag()"
@@ -66,7 +78,7 @@ interface TourHotspot {
                 class="tour-panorama-canvas"
                 [hidden]="!has360Panorama || !!panoramaError"
                 role="img"
-                [attr.aria-label]="'Panorama esférico 360 grados ilustrativo de la habitación Simple, generado por IA; no representa una fotografía real del hostal.'">
+                [attr.aria-label]="'Panorama 360 grados: ' + activeSceneLabel">
               </canvas>
               <img
                 *ngIf="!has360Panorama || panoramaError"
@@ -75,9 +87,33 @@ interface TourHotspot {
                 [alt]="room.type === 'Matrimonial' ? 'Ilustración generada por IA de una habitación matrimonial ficticia; no corresponde al hostal' : room.name + ', fotografía ilustrativa; no es una vista 360 grados'"
                 [style.transform]="imageTransform"
                 draggable="false">
+              <button
+                *ngIf="!isExpanded"
+                #expandButton
+                class="expand-viewer-button"
+                type="button"
+                aria-label="Abrir visor 360 grados a pantalla completa"
+                title="Abrir a pantalla completa"
+                (pointerdown)="$event.stopPropagation()"
+                (click)="openExpandedViewer()">
+                <svg aria-hidden="true" viewBox="0 0 24 24">
+                  <path d="M8 3H3v5M16 3h5v5M21 16v5h-5M3 16v5h5" />
+                </svg>
+              </button>
+              <div *ngIf="isExpanded" class="expanded-viewer-controls" role="group" aria-label="Controles del visor ampliado">
+                <button class="expanded-control-button" type="button" aria-label="Girar a la izquierda" (pointerdown)="$event.stopPropagation()" (click)="rotate(-20)">←</button>
+                <button class="expanded-control-button" type="button" aria-label="Girar a la derecha" (pointerdown)="$event.stopPropagation()" (click)="rotate(20)">→</button>
+                <button class="expanded-control-button" type="button" aria-label="Mirar arriba" (pointerdown)="$event.stopPropagation()" (click)="tilt(10)">↑</button>
+                <button class="expanded-control-button" type="button" aria-label="Mirar abajo" (pointerdown)="$event.stopPropagation()" (click)="tilt(-10)">↓</button>
+                <button #closeButton class="expanded-control-button expanded-close-button" type="button" aria-label="Cerrar visor ampliado" title="Cerrar (Esc)" (pointerdown)="$event.stopPropagation()" (click)="closeExpandedViewer()">
+                  <svg aria-hidden="true" viewBox="0 0 24 24">
+                    <path d="m6 6 12 12M18 6 6 18" />
+                  </svg>
+                </button>
+              </div>
               <div class="viewer-shade" aria-hidden="true"></div>
               <div class="viewer-title">
-                <span>{{ room.name }}</span>
+                <span>{{ activeSceneLabel }}</span>
                 <span>{{ room.capacity }} {{ room.capacity === 1 ? 'huésped' : 'huéspedes' }}</span>
               </div>
               <div class="hotspots-layer" [style.transform]="imageTransform">
@@ -132,16 +168,25 @@ interface TourHotspot {
     .tour-hero { background:#f2f1eb; padding:36px 0; }
     .tour-hero .section-title { margin-bottom:12px; }
     .tour-hero p { max-width:760px; color:#4f5b53; line-height:1.65; }
-    .tour-disclosure { border-left:4px solid #a84e2c; padding:10px 14px; background:#fff; }
     .tour-content { padding-block:28px 56px; }
     .tour-status { padding:18px; border-radius:6px; background:#f3f5f2; color:#26362e; }
     .tour-error { border:1px solid #a12e21; background:#fff5f4; }
     .room-picker { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-bottom:20px; }
     .room-picker-button,.tour-button { display:inline-flex; min-width:48px; min-height:48px; align-items:center; justify-content:center; gap:8px; border:2px solid #183b32; border-radius:6px; background:#fff; padding:10px 14px; color:#183b32; font:inherit; font-weight:700; cursor:pointer; }
     .room-picker-button[aria-pressed="true"] { background:#183b32; color:#fff; }
+    .scene-picker { display:flex; flex-wrap:wrap; gap:8px; margin:-8px 0 20px; }
+    .scene-picker-button { min-width:48px; min-height:48px; border:1px solid #183b32; border-radius:6px; background:#fff; padding:8px 14px; color:#183b32; font:inherit; font-weight:700; cursor:pointer; }
+    .scene-picker-button[aria-pressed="true"] { background:#e9f0e9; box-shadow:inset 0 0 0 2px #183b32; }
     .tour-layout { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(270px,.8fr); gap:24px; align-items:start; }
     .tour-viewer { position:relative; min-height:320px; aspect-ratio:16/10; overflow:hidden; border-radius:10px; background:#202a24; touch-action:pan-y; cursor:grab; }
     .tour-viewer:active { cursor:grabbing; }
+    .tour-viewer-expanded { position:fixed; z-index:1200; inset:0; width:100vw; height:100vh; height:100dvh; min-height:0; aspect-ratio:auto; border-radius:0; cursor:grab; touch-action:none; }
+    .expand-viewer-button,.expanded-control-button { display:grid; width:48px; min-width:48px; height:48px; min-height:48px; place-items:center; border:2px solid #fff; border-radius:8px; background:#183b32; color:#fff; cursor:pointer; box-shadow:0 2px 10px #0008; }
+    .expand-viewer-button { position:absolute; z-index:4; top:12px; right:12px; }
+    .expand-viewer-button svg,.expanded-control-button svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+    .expanded-viewer-controls { position:absolute; z-index:4; top:12px; right:12px; left:12px; display:flex; flex-wrap:wrap; gap:8px; pointer-events:none; }
+    .expanded-control-button { pointer-events:auto; font-size:22px; font-weight:700; }
+    .expanded-close-button { margin-left:auto; }
     .tour-panorama-canvas { position:absolute; inset:0; display:block; width:100%; height:100%; }
     .tour-panorama-canvas[hidden] { display:none; }
     .tour-room-image { width:100%; height:100%; max-width:100%; object-fit:cover; user-select:none; transition:transform .18s ease-out; }
@@ -168,7 +213,7 @@ interface TourHotspot {
       .tour-hero { padding-block:26px; }
       .tour-content { padding-bottom:24px; }
       .tour-layout { grid-template-columns:1fr; }
-      .tour-viewer { min-height:240px; aspect-ratio:4/3; }
+      .tour-viewer:not(.tour-viewer-expanded) { min-height:240px; aspect-ratio:4/3; }
     }
     @media(min-width:768px) { .room-picker { grid-template-columns:repeat(4,minmax(0,1fr)); } }
     @media(max-width:420px) {
@@ -183,6 +228,8 @@ interface TourHotspot {
 })
 export class TourArComponent implements OnInit, OnDestroy {
   private panoramaCanvas?: ElementRef<HTMLCanvasElement>;
+  @ViewChild('expandButton') private expandButton?: ElementRef<HTMLButtonElement>;
+  @ViewChild('closeButton') private closeButton?: ElementRef<HTMLButtonElement>;
   @ViewChild('panoramaCanvas')
   set panoramaCanvasRef(canvas: ElementRef<HTMLCanvasElement> | undefined) {
     this.panoramaCanvas = canvas;
@@ -201,13 +248,23 @@ export class TourArComponent implements OnInit, OnDestroy {
     { id: 'patio', label: 'Patio', top: '55%', left: '80%', yaw: 62, pitch: -7 }
   ];
 
+  readonly scenes: { id: SceneId; label: string }[] = [
+    { id: 'room', label: 'Habitación' },
+    { id: 'bathroom', label: 'Baño' },
+    { id: 'shower', label: 'Ducha' },
+    { id: 'breakfast', label: 'Desayuno' },
+    { id: 'patio', label: 'Patio' }
+  ];
+
   rooms: Room[] = [];
   selectedRoom: Room | null = null;
+  activeSceneId: SceneId = 'room';
   loading = true;
   errorMessage = '';
   roomsWarning = '';
   angle = 0;
   verticalAngle = 0;
+  isExpanded = false;
   activeHotspotId: HotspotId = 'bed';
   panoramaError = '';
   private requestedRoomId: string | null = null;
@@ -223,20 +280,31 @@ export class TourArComponent implements OnInit, OnDestroy {
   constructor(private readonly roomService: RoomService, private readonly route: ActivatedRoute) {}
 
   get has360Panorama(): boolean {
-    return this.selectedRoom?.type === 'Simple';
+    return !!this.selectedRoom;
   }
 
   get roomImageUrl(): string {
     if (!this.selectedRoom) return '';
-    if (this.selectedRoom.type === 'Simple') return '/assets/images/panorama_habitacion_360_equirectangular.png';
-    if (this.selectedRoom.type === 'Matrimonial') return '/assets/images/habitacion-prototipo-generada.png';
-    return getRoomImageUrl(this.selectedRoom.type);
+    if (this.activeSceneId === 'bathroom') return '/assets/images/HABITACION_BANO360.png';
+    if (this.activeSceneId === 'shower') return '/assets/images/DUCHA360.png';
+    if (this.activeSceneId === 'breakfast') return '/assets/images/DESAYUNO360.png';
+    if (this.activeSceneId === 'patio') return '/assets/images/PATIO.png';
+    const roomPanoramas: Record<Room['type'], string> = {
+      Simple: '/assets/images/panorama_habitacion_360_equirectangular.png',
+      Doble: '/assets/images/HABITACION%2520DOBLE360.png',
+      Matrimonial: '/assets/images/HABITACION%2520MATRIMONIAL360.png',
+      Familiar: '/assets/images/HABITACION%2520FAMILIAR360.png'
+    };
+    return roomPanoramas[this.selectedRoom.type];
+  }
+
+  get activeSceneLabel(): string {
+    if (this.activeSceneId === 'room') return this.selectedRoom?.name ?? 'Habitación';
+    return this.scenes.find((scene) => scene.id === this.activeSceneId)?.label ?? '';
   }
 
   get fallbackImageUrl(): string {
-    return this.selectedRoom?.type === 'Simple'
-      ? getRoomImageUrl('Simple')
-      : this.roomImageUrl;
+    return this.selectedRoom ? getRoomImageUrl(this.selectedRoom.type) : '';
   }
 
   get imageTransform(): string {
@@ -303,10 +371,29 @@ export class TourArComponent implements OnInit, OnDestroy {
 
   selectRoom(room: Room): void {
     this.selectedRoom = room;
+    this.activeSceneId = 'room';
     this.angle = 0;
     this.verticalAngle = 0;
     this.activeHotspotId = 'bed';
     if (this.has360Panorama && this.gl) this.loadPanorama();
+  }
+
+  selectScene(sceneId: SceneId): void {
+    this.activeSceneId = sceneId;
+    this.angle = 0;
+    this.verticalAngle = 0;
+    this.activeHotspotId = 'bed';
+    this.loadPanorama();
+  }
+
+  openExpandedViewer(): void {
+    this.isExpanded = true;
+    requestAnimationFrame(() => this.closeButton?.nativeElement.focus());
+  }
+
+  closeExpandedViewer(): void {
+    this.isExpanded = false;
+    requestAnimationFrame(() => this.expandButton?.nativeElement.focus());
   }
 
   rotate(degrees: number): void {
@@ -358,7 +445,10 @@ export class TourArComponent implements OnInit, OnDestroy {
   }
 
   onViewerKeydown(event: KeyboardEvent): void {
-    if (event.key === 'ArrowLeft') {
+    if (event.key === 'Escape' && this.isExpanded) {
+      event.preventDefault();
+      this.closeExpandedViewer();
+    } else if (event.key === 'ArrowLeft') {
       event.preventDefault();
       this.rotate(-20);
     } else if (event.key === 'ArrowRight') {
@@ -494,6 +584,7 @@ export class TourArComponent implements OnInit, OnDestroy {
     this.panoramaError = '';
     const image = new Image();
     image.onload = () => {
+      if (this.roomImageUrl !== url) return;
       if (!this.gl || !this.panoramaTexture) return;
       this.gl.bindTexture(this.gl.TEXTURE_2D, this.panoramaTexture);
       this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, 1);
