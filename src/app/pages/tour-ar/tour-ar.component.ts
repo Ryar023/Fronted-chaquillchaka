@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { Room } from '../../models/room.interface';
 import { getRoomImageUrl } from '../../models/room-image';
@@ -12,6 +12,8 @@ interface TourHotspot {
   label: string;
   top: string;
   left: string;
+  yaw: number;
+  pitch: number;
 }
 
 @Component({
@@ -23,8 +25,8 @@ interface TourHotspot {
       <div class="page-shell">
         <p class="eyebrow">Explora antes de reservar</p>
         <h1 class="section-title">Vista inmersiva de las habitaciones</h1>
-        <p>Recorrido panorámico simulado con fotografías del alojamiento. Puedes arrastrar la imagen, usar las flechas del teclado o los controles accesibles.</p>
-        <p class="tour-disclosure"><strong>Transparencia:</strong> este prototipo no es un escaneo WebAR ni usa la cámara. La imagen de la habitación matrimonial es una ilustración generada por IA, no una foto real del hostal. Las fotografías disponibles no incluyen medidas exactas de camas y el catálogo no confirma vistas al patio desde cada habitación.</p>
+        <p>Explora la habitación Simple en 360°: arrastra la imagen, usa las flechas del teclado o los controles accesibles. Las demás habitaciones muestran fotografías mientras preparamos sus panoramas.</p>
+        <p class="tour-disclosure"><strong>Transparencia:</strong> son imágenes conceptuales generadas por IA para un prototipo, no fotografías reales ni un escaneo WebAR del hostal. Las medidas exactas de las camas y la vista al patio no están confirmadas.</p>
       </div>
     </section>
 
@@ -54,15 +56,23 @@ interface TourHotspot {
               class="tour-viewer"
               role="region"
               tabindex="0"
-              [attr.aria-label]="'Visor interactivo de ' + room.name + '. Usa las flechas izquierda y derecha para girar.'"
+              [attr.aria-label]="'Visor interactivo de ' + room.name + (has360Panorama ? ' en panorama 360 grados. Usa las flechas izquierda y derecha para girar.' : '. Usa las flechas izquierda y derecha o los botones para explorar la fotografía.')"
               (pointerdown)="startDrag($event)"
               (pointerup)="endDrag($event)"
               (pointercancel)="cancelDrag()"
               (keydown)="onViewerKeydown($event)">
+              <canvas
+                #panoramaCanvas
+                class="tour-panorama-canvas"
+                [hidden]="!has360Panorama || !!panoramaError"
+                role="img"
+                [attr.aria-label]="'Panorama esférico 360 grados ilustrativo de la habitación Simple, generado por IA; no representa una fotografía real del hostal.'">
+              </canvas>
               <img
+                *ngIf="!has360Panorama || panoramaError"
                 class="tour-room-image"
-                [src]="roomImageUrl"
-                [alt]="room.type === 'Matrimonial' ? 'Ilustración generada por IA de una habitación matrimonial ficticia en Cusco; imagen panorámica simulada, no corresponde al hostal' : room.name + ', fotografía del alojamiento; vista panorámica simulada, sin escala'"
+                [src]="fallbackImageUrl"
+                [alt]="room.type === 'Matrimonial' ? 'Ilustración generada por IA de una habitación matrimonial ficticia; no corresponde al hostal' : room.name + ', fotografía ilustrativa; no es una vista 360 grados'"
                 [style.transform]="imageTransform"
                 draggable="false">
               <div class="viewer-shade" aria-hidden="true"></div>
@@ -73,11 +83,12 @@ interface TourHotspot {
               <div class="hotspots-layer" [style.transform]="imageTransform">
                 <button
                   *ngFor="let hotspot of hotspots"
+                  [hidden]="has360Panorama && !isHotspotVisible(hotspot)"
                   class="hotspot"
                   [class.selected]="activeHotspotId === hotspot.id"
                   type="button"
-                  [style.top]="hotspot.top"
-                  [style.left]="hotspot.left"
+                  [style.top]="hotspotPosition(hotspot).top"
+                  [style.left]="hotspotPosition(hotspot).left"
                   [attr.aria-label]="'Ver información: ' + hotspot.label"
                   [attr.aria-pressed]="activeHotspotId === hotspot.id"
                   (pointerdown)="$event.stopPropagation()"
@@ -90,10 +101,15 @@ interface TourHotspot {
 
             <div class="viewer-controls" role="group" aria-label="Controles para girar la vista">
               <button class="tour-button" type="button" aria-label="Girar vista a la izquierda" (click)="rotate(-20)">← Girar</button>
-              <span class="view-angle" role="status" aria-live="polite">Vista simulada: {{ angle }}°</span>
+              <span class="view-angle" role="status" aria-live="polite">{{ has360Panorama ? 'Vista 360°' : 'Vista simulada' }}: {{ angle }}°</span>
               <button class="tour-button" type="button" aria-label="Girar vista a la derecha" (click)="rotate(20)">Girar →</button>
+              <ng-container *ngIf="has360Panorama">
+                <button class="tour-button tilt-control" type="button" aria-label="Inclinar vista hacia arriba" (click)="tilt(10)">↑ Mirar arriba</button>
+                <button class="tour-button tilt-control" type="button" aria-label="Inclinar vista hacia abajo" (click)="tilt(-10)">↓ Mirar abajo</button>
+              </ng-container>
             </div>
-            <p class="gesture-hint">En móvil, desliza horizontalmente. Con teclado, enfoca la imagen y usa ← / →. Los botones de giro son una alternativa a los gestos.</p>
+            <p class="gesture-hint">En móvil, desliza horizontalmente. Con teclado, enfoca la imagen y usa ← / → para girar y ↑ / ↓ para inclinar. También puedes usar los botones.</p>
+            <p *ngIf="panoramaError" class="panorama-error" role="status">{{ panoramaError }} Se muestra la fotografía ilustrativa como alternativa.</p>
           </div>
 
           <aside class="hotspot-details" aria-live="polite" aria-atomic="true">
@@ -126,6 +142,8 @@ interface TourHotspot {
     .tour-layout { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(270px,.8fr); gap:24px; align-items:start; }
     .tour-viewer { position:relative; min-height:320px; aspect-ratio:16/10; overflow:hidden; border-radius:10px; background:#202a24; touch-action:pan-y; cursor:grab; }
     .tour-viewer:active { cursor:grabbing; }
+    .tour-panorama-canvas { position:absolute; inset:0; display:block; width:100%; height:100%; }
+    .tour-panorama-canvas[hidden] { display:none; }
     .tour-room-image { width:100%; height:100%; max-width:100%; object-fit:cover; user-select:none; transition:transform .18s ease-out; }
     .hotspots-layer { position:absolute; inset:0; pointer-events:none; transition:transform .18s ease-out; }
     .viewer-shade { position:absolute; inset:45% 0 0; pointer-events:none; background:linear-gradient(transparent,#101714aa); }
@@ -135,8 +153,10 @@ interface TourHotspot {
     .hotspot-label { position:absolute; top:50px; left:50%; border-radius:4px; background:#17221f; padding:4px 7px; color:#fff; font-size:12px; font-weight:700; white-space:nowrap; transform:translateX(-50%); }
     .viewer-controls { display:grid; grid-template-columns:1fr auto 1fr; gap:8px; align-items:center; margin-top:12px; }
     .viewer-controls .tour-button:last-child { justify-self:end; }
+    .viewer-controls .tilt-control { justify-self:stretch; }
     .view-angle { color:#34443a; font-size:13px; font-weight:700; text-align:center; }
     .gesture-hint { margin:10px 0 0; color:#59635d; font-size:13px; line-height:1.5; }
+    .panorama-error { margin:8px 0 0; color:#8c1d18; font-size:13px; line-height:1.5; }
     .hotspot-details { border:1px solid #dfe5dc; border-radius:8px; background:#fff; padding:20px; }
     .hotspot-details h2 { margin:8px 0; color:#183b32; font-family:Georgia,"Times New Roman",serif; font-size:1.6rem; font-weight:500; }
     .hotspot-details > p:not(.eyebrow) { color:#4f5b53; line-height:1.65; }
@@ -161,11 +181,24 @@ interface TourHotspot {
     @media(prefers-reduced-motion:reduce) { .tour-room-image { transition:none; } }
   `]
 })
-export class TourArComponent implements OnInit {
+export class TourArComponent implements OnInit, OnDestroy {
+  private panoramaCanvas?: ElementRef<HTMLCanvasElement>;
+  @ViewChild('panoramaCanvas')
+  set panoramaCanvasRef(canvas: ElementRef<HTMLCanvasElement> | undefined) {
+    this.panoramaCanvas = canvas;
+    if (canvas && !this.viewerInitializationStarted) {
+      this.viewerInitializationStarted = true;
+      this.initializePanoramaViewer();
+      if (this.has360Panorama) this.loadPanorama();
+    } else if (canvas && this.has360Panorama) {
+      this.loadPanorama();
+    }
+  }
+
   readonly hotspots: TourHotspot[] = [
-    { id: 'bed', label: 'Cama', top: '48%', left: '28%' },
-    { id: 'bath', label: 'Baño', top: '38%', left: '58%' },
-    { id: 'patio', label: 'Patio', top: '55%', left: '80%' }
+    { id: 'bed', label: 'Cama', top: '48%', left: '28%', yaw: -18, pitch: -5 },
+    { id: 'bath', label: 'Baño', top: '38%', left: '58%', yaw: 28, pitch: 8 },
+    { id: 'patio', label: 'Patio', top: '55%', left: '80%', yaw: 62, pitch: -7 }
   ];
 
   rooms: Room[] = [];
@@ -174,24 +207,51 @@ export class TourArComponent implements OnInit {
   errorMessage = '';
   roomsWarning = '';
   angle = 0;
+  verticalAngle = 0;
   activeHotspotId: HotspotId = 'bed';
+  panoramaError = '';
   private requestedRoomId: string | null = null;
-  private dragStartX: number | null = null;
+  private dragStart: { x: number; y: number } | null = null;
+  private gl: WebGLRenderingContext | null = null;
+  private program: WebGLProgram | null = null;
+  private vertexBuffer: WebGLBuffer | null = null;
+  private panoramaTexture: WebGLTexture | null = null;
+  private resizeObserver: ResizeObserver | null = null;
+  private loadedPanoramaUrl = '';
+  private viewerInitializationStarted = false;
 
   constructor(private readonly roomService: RoomService, private readonly route: ActivatedRoute) {}
 
+  get has360Panorama(): boolean {
+    return this.selectedRoom?.type === 'Simple';
+  }
+
   get roomImageUrl(): string {
     if (!this.selectedRoom) return '';
-    return this.selectedRoom.type === 'Matrimonial'
-      ? '/assets/images/habitacion-prototipo-generada.png'
-      : getRoomImageUrl(this.selectedRoom.type);
+    if (this.selectedRoom.type === 'Simple') return '/assets/images/panorama_habitacion_360_equirectangular.png';
+    if (this.selectedRoom.type === 'Matrimonial') return '/assets/images/habitacion-prototipo-generada.png';
+    return getRoomImageUrl(this.selectedRoom.type);
+  }
+
+  get fallbackImageUrl(): string {
+    return this.selectedRoom?.type === 'Simple'
+      ? getRoomImageUrl('Simple')
+      : this.roomImageUrl;
   }
 
   get imageTransform(): string {
+    if (this.has360Panorama) return 'none';
     const radians = this.angle * Math.PI / 180;
     const horizontalOffset = Math.sin(radians) * 3;
     const perspectiveRotation = Math.sin(radians) * 2;
     return `translateX(${horizontalOffset}%) scale(1.08) rotateY(${perspectiveRotation}deg)`;
+  }
+
+  ngOnDestroy(): void {
+    this.resizeObserver?.disconnect();
+    if (this.gl && this.panoramaTexture) this.gl.deleteTexture(this.panoramaTexture);
+    if (this.gl && this.vertexBuffer) this.gl.deleteBuffer(this.vertexBuffer);
+    if (this.gl && this.program) this.gl.deleteProgram(this.program);
   }
 
   get activeHotspotTitle(): string {
@@ -244,11 +304,34 @@ export class TourArComponent implements OnInit {
   selectRoom(room: Room): void {
     this.selectedRoom = room;
     this.angle = 0;
+    this.verticalAngle = 0;
     this.activeHotspotId = 'bed';
+    if (this.has360Panorama && this.gl) this.loadPanorama();
   }
 
   rotate(degrees: number): void {
     this.angle = ((this.angle + degrees) % 360 + 360) % 360;
+    if (this.has360Panorama) this.drawPanorama();
+  }
+
+  tilt(degrees: number): void {
+    this.verticalAngle = Math.max(-60, Math.min(60, this.verticalAngle + degrees));
+    if (this.has360Panorama) this.drawPanorama();
+  }
+
+  hotspotPosition(hotspot: TourHotspot): { top: string; left: string } {
+    if (!this.has360Panorama) return { top: hotspot.top, left: hotspot.left };
+    const yawDelta = this.normalizeAngle(hotspot.yaw - this.angle) * Math.PI / 180;
+    const pitchDelta = (hotspot.pitch - this.verticalAngle) * Math.PI / 180;
+    const horizontal = 50 + Math.tan(yawDelta) * 50;
+    const vertical = 50 - Math.tan(pitchDelta) * 50;
+    return { top: `${vertical}%`, left: `${horizontal}%` };
+  }
+
+  isHotspotVisible(hotspot: TourHotspot): boolean {
+    const yawDelta = Math.abs(this.normalizeAngle(hotspot.yaw - this.angle));
+    const pitchDelta = Math.abs(hotspot.pitch - this.verticalAngle);
+    return yawDelta < 42 && pitchDelta < 38;
   }
 
   showHotspot(id: HotspotId): void {
@@ -257,19 +340,21 @@ export class TourArComponent implements OnInit {
 
   startDrag(event: PointerEvent): void {
     if (event.pointerType === 'mouse' && event.button !== 0) return;
-    this.dragStartX = event.clientX;
+    this.dragStart = { x: event.clientX, y: event.clientY };
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
   }
 
   endDrag(event: PointerEvent): void {
-    if (this.dragStartX === null) return;
-    const delta = this.dragStartX - event.clientX;
-    this.dragStartX = null;
-    if (Math.abs(delta) >= 4) this.rotate(Math.round(delta * 0.5));
+    if (!this.dragStart) return;
+    const deltaX = this.dragStart.x - event.clientX;
+    const deltaY = this.dragStart.y - event.clientY;
+    this.dragStart = null;
+    if (Math.abs(deltaX) >= 4) this.rotate(Math.round(deltaX * 0.5));
+    if (this.has360Panorama && Math.abs(deltaY) >= 4) this.tilt(Math.round(deltaY * 0.35));
   }
 
   cancelDrag(): void {
-    this.dragStartX = null;
+    this.dragStart = null;
   }
 
   onViewerKeydown(event: KeyboardEvent): void {
@@ -279,7 +364,184 @@ export class TourArComponent implements OnInit {
     } else if (event.key === 'ArrowRight') {
       event.preventDefault();
       this.rotate(20);
+    } else if (this.has360Panorama && event.key === 'ArrowUp') {
+      event.preventDefault();
+      this.tilt(10);
+    } else if (this.has360Panorama && event.key === 'ArrowDown') {
+      event.preventDefault();
+      this.tilt(-10);
     }
+  }
+
+  private initializePanoramaViewer(): void {
+    const canvas = this.panoramaCanvas?.nativeElement;
+    if (!canvas) return;
+    const gl = canvas.getContext('webgl', { antialias: true, alpha: false });
+    if (!gl) {
+      this.panoramaError = 'Este navegador no pudo iniciar el visor 360°.';
+      return;
+    }
+
+    const vertexShader = this.createShader(gl, gl.VERTEX_SHADER, `
+      attribute vec2 a_position;
+      varying vec2 v_uv;
+      void main() {
+        v_uv = a_position * 0.5 + 0.5;
+        gl_Position = vec4(a_position, 0.0, 1.0);
+      }
+    `);
+    const fragmentShader = this.createShader(gl, gl.FRAGMENT_SHADER, `
+      precision highp float;
+      varying vec2 v_uv;
+      uniform sampler2D u_panorama;
+      uniform vec2 u_resolution;
+      uniform float u_yaw;
+      uniform float u_pitch;
+      uniform float u_fov;
+      const float PI = 3.14159265358979323846;
+      void main() {
+        vec2 screen = v_uv * 2.0 - 1.0;
+        float focal = tan(u_fov * 0.5);
+        float aspect = u_resolution.x / u_resolution.y;
+        vec3 ray = normalize(vec3(screen.x * aspect * focal, screen.y * focal, 1.0));
+        float cosYaw = cos(u_yaw);
+        float sinYaw = sin(u_yaw);
+        ray = vec3(ray.x * cosYaw + ray.z * sinYaw, ray.y, -ray.x * sinYaw + ray.z * cosYaw);
+        float cosPitch = cos(u_pitch);
+        float sinPitch = sin(u_pitch);
+        ray = vec3(ray.x, ray.y * cosPitch + ray.z * sinPitch, -ray.y * sinPitch + ray.z * cosPitch);
+        float longitude = atan(ray.x, ray.z);
+        float latitude = asin(clamp(ray.y, -1.0, 1.0));
+        vec2 uv = vec2(longitude / (2.0 * PI) + 0.5, 0.5 + latitude / PI);
+        gl_FragColor = texture2D(u_panorama, uv);
+      }
+    `);
+    if (!vertexShader || !fragmentShader) return;
+
+    const program = gl.createProgram();
+    if (!program) {
+      this.panoramaError = 'No se pudo preparar el visor 360° en este navegador.';
+      return;
+    }
+    gl.attachShader(program, vertexShader);
+    gl.attachShader(program, fragmentShader);
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      console.error('No se pudo enlazar el visor WebGL del panorama.', gl.getProgramInfoLog(program));
+      this.panoramaError = 'No se pudo preparar el visor 360° en este navegador.';
+      gl.deleteProgram(program);
+      return;
+    }
+    gl.deleteShader(vertexShader);
+    gl.deleteShader(fragmentShader);
+
+    const positionLocation = gl.getAttribLocation(program, 'a_position');
+    const vertexBuffer = gl.createBuffer();
+    const texture = gl.createTexture();
+    if (positionLocation < 0 || !vertexBuffer || !texture) {
+      console.error('No se pudieron crear los recursos gráficos del visor 360°.');
+      this.panoramaError = 'No se pudieron preparar los gráficos 360° en este navegador.';
+      gl.deleteProgram(program);
+      if (vertexBuffer) gl.deleteBuffer(vertexBuffer);
+      if (texture) gl.deleteTexture(texture);
+      return;
+    }
+
+    gl.useProgram(program);
+    gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(positionLocation);
+    gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.uniform1i(gl.getUniformLocation(program, 'u_panorama'), 0);
+    gl.uniform1f(gl.getUniformLocation(program, 'u_fov'), Math.PI / 2);
+
+    this.gl = gl;
+    this.program = program;
+    this.vertexBuffer = vertexBuffer;
+    this.panoramaTexture = texture;
+    this.resizeObserver = new ResizeObserver(() => this.resizePanorama());
+    this.resizeObserver.observe(canvas.parentElement ?? canvas);
+    this.resizePanorama();
+    window.requestAnimationFrame(() => this.resizePanorama());
+  }
+
+  private createShader(gl: WebGLRenderingContext, type: number, source: string): WebGLShader | null {
+    const shader = gl.createShader(type);
+    if (!shader) {
+      this.panoramaError = 'No se pudieron preparar los gráficos 360° en este navegador.';
+      return null;
+    }
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+      console.error('No se pudo compilar el visor WebGL del panorama.', gl.getShaderInfoLog(shader));
+      this.panoramaError = 'No se pudo preparar el visor 360° en este navegador.';
+      gl.deleteShader(shader);
+      return null;
+    }
+    return shader;
+  }
+
+  private loadPanorama(): void {
+    const url = this.roomImageUrl;
+    if (!this.gl || !this.panoramaTexture || !url || this.loadedPanoramaUrl === url) return;
+    this.panoramaError = '';
+    const image = new Image();
+    image.onload = () => {
+      if (!this.gl || !this.panoramaTexture) return;
+      this.gl.bindTexture(this.gl.TEXTURE_2D, this.panoramaTexture);
+      this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, 1);
+      this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, image);
+      const uploadError = this.gl.getError();
+      if (uploadError !== this.gl.NO_ERROR) {
+        console.error('El navegador no pudo subir la textura del panorama 360°.', uploadError);
+        this.panoramaError = 'El navegador no pudo preparar la imagen panorámica 360°.';
+        return;
+      }
+      this.loadedPanoramaUrl = url;
+      this.resizePanorama();
+    };
+    image.onerror = (error) => {
+      console.error('No se pudo cargar la imagen panorámica 360°.', error);
+      this.panoramaError = 'No se pudo cargar la imagen panorámica 360°.';
+    };
+    image.src = url;
+  }
+
+  private resizePanorama(): void {
+    const canvas = this.panoramaCanvas?.nativeElement;
+    if (!canvas || !this.gl) return;
+    const ratio = Math.min(window.devicePixelRatio || 1, 2);
+    const width = Math.max(1, Math.round(canvas.clientWidth * ratio));
+    const height = Math.max(1, Math.round(canvas.clientHeight * ratio));
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width;
+      canvas.height = height;
+    }
+    this.drawPanorama();
+  }
+
+  private drawPanorama(): void {
+    const gl = this.gl;
+    const program = this.program;
+    const canvas = this.panoramaCanvas?.nativeElement;
+    if (!gl || !program || !canvas || !this.loadedPanoramaUrl) return;
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    gl.useProgram(program);
+    gl.uniform2f(gl.getUniformLocation(program, 'u_resolution'), canvas.width, canvas.height);
+    gl.uniform1f(gl.getUniformLocation(program, 'u_yaw'), this.angle * Math.PI / 180);
+    gl.uniform1f(gl.getUniformLocation(program, 'u_pitch'), this.verticalAngle * Math.PI / 180);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+
+  private normalizeAngle(degrees: number): number {
+    return ((degrees + 180) % 360 + 360) % 360 - 180;
   }
 
   private selectRequestedRoom(): void {
