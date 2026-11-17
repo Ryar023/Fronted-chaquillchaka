@@ -24,7 +24,7 @@ interface TourHotspot {
         <p class="eyebrow">Explora antes de reservar</p>
         <h1 class="section-title">Vista inmersiva de las habitaciones</h1>
         <p>Recorrido panorámico simulado con fotografías del alojamiento. Puedes arrastrar la imagen, usar las flechas del teclado o los controles accesibles.</p>
-        <p class="tour-disclosure"><strong>Transparencia:</strong> este prototipo no es un escaneo WebAR ni usa la cámara. Las fotografías disponibles no incluyen medidas exactas de camas y el catálogo no confirma vistas al patio desde cada habitación.</p>
+        <p class="tour-disclosure"><strong>Transparencia:</strong> este prototipo no es un escaneo WebAR ni usa la cámara. La imagen de la habitación matrimonial es una ilustración generada por IA, no una foto real del hostal. Las fotografías disponibles no incluyen medidas exactas de camas y el catálogo no confirma vistas al patio desde cada habitación.</p>
       </div>
     </section>
 
@@ -62,7 +62,7 @@ interface TourHotspot {
               <img
                 class="tour-room-image"
                 [src]="roomImageUrl"
-                [alt]="room.name + ', fotografía real del alojamiento; vista panorámica simulada, sin escala'"
+                [alt]="room.type === 'Matrimonial' ? 'Ilustración generada por IA de una habitación matrimonial ficticia en Cusco; imagen panorámica simulada, no corresponde al hostal' : room.name + ', fotografía del alojamiento; vista panorámica simulada, sin escala'"
                 [style.transform]="imageTransform"
                 draggable="false">
               <div class="viewer-shade" aria-hidden="true"></div>
@@ -181,7 +181,10 @@ export class TourArComponent implements OnInit {
   constructor(private readonly roomService: RoomService, private readonly route: ActivatedRoute) {}
 
   get roomImageUrl(): string {
-    return this.selectedRoom ? getRoomImageUrl(this.selectedRoom.type) : '';
+    if (!this.selectedRoom) return '';
+    return this.selectedRoom.type === 'Matrimonial'
+      ? '/assets/images/habitacion-prototipo-generada.png'
+      : getRoomImageUrl(this.selectedRoom.type);
   }
 
   get imageTransform(): string {
