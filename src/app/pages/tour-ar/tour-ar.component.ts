@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { Room } from '../../models/room.interface';
 import { getRoomImageUrl } from '../../models/room-image';
@@ -65,6 +65,7 @@ interface TourHotspot {
           <div class="tour-viewer-column">
             <div
               class="tour-viewer"
+              #tourViewer
               [class.tour-viewer-expanded]="isExpanded"
               role="region"
               tabindex="0"
@@ -82,11 +83,14 @@ interface TourHotspot {
                 role="img"
                 [attr.aria-label]="'Panorama 360 grados: ' + activeSceneLabel">
               </canvas>
+              <div *ngIf="panoramaLoading" class="panorama-loading" role="status" aria-live="polite">
+                Cargando panorama 360° de {{ activeSceneLabel }}…
+              </div>
               <img
                 *ngIf="!has360Panorama || panoramaError"
                 class="tour-room-image"
                 [src]="fallbackImageUrl"
-                [alt]="room.type === 'Matrimonial' ? 'Ilustración generada por IA de una habitación matrimonial ficticia; no corresponde al hostal' : room.name + ', fotografía ilustrativa; no es una vista 360 grados'"
+                [alt]="'Panorama equirectangular ilustrativo de ' + activeSceneLabel + '; se muestra como imagen plana porque no se pudo iniciar el visor 360 grados.'"
                 [style.transform]="imageTransform"
                 draggable="false">
               <button
@@ -139,7 +143,7 @@ interface TourHotspot {
 
             <div class="viewer-controls" role="group" aria-label="Controles para girar la vista">
               <button class="tour-button" type="button" aria-label="Girar vista a la izquierda" (click)="rotate(-20)">← Girar</button>
-              <span class="view-angle" role="status" aria-live="polite">{{ has360Panorama ? 'Vista 360°' : 'Vista simulada' }}: {{ angle }}°</span>
+              <span class="view-angle" role="status" aria-live="polite">{{ has360Panorama ? 'Vista 360°' : 'Vista simulada' }}: {{ angle | number:'1.0-0' }}°</span>
               <button class="tour-button" type="button" aria-label="Girar vista a la derecha" (click)="rotate(20)">Girar →</button>
               <ng-container *ngIf="has360Panorama">
                 <button class="tour-button tilt-control" type="button" aria-label="Inclinar vista hacia arriba" (click)="tilt(10)">↑ Mirar arriba</button>
@@ -147,6 +151,7 @@ interface TourHotspot {
               </ng-container>
             </div>
             <p class="gesture-hint">Arrastra para mirar alrededor y usa la rueda del mouse para acercar o alejar. En móvil, desliza con un dedo. Con teclado, usa ← / → para girar y ↑ / ↓ para inclinar.</p>
+            <p *ngIf="viewerNotice" class="panorama-error" role="status">{{ viewerNotice }}</p>
             <p *ngIf="panoramaError" class="panorama-error" role="status">{{ panoramaError }} Se muestra la fotografía ilustrativa como alternativa.</p>
           </div>
 
@@ -191,6 +196,7 @@ interface TourHotspot {
     .expanded-close-button { margin-left:auto; }
     .tour-panorama-canvas { position:absolute; inset:0; display:block; width:100%; height:100%; }
     .tour-panorama-canvas[hidden] { display:none; }
+    .panorama-loading { position:absolute; z-index:3; inset:0; display:grid; place-items:center; background:#14211dcc; color:#fff; font-weight:700; text-align:center; }
     .tour-room-image { width:100%; height:100%; max-width:100%; object-fit:cover; user-select:none; transition:transform .18s ease-out; }
     .hotspots-layer { position:absolute; inset:0; pointer-events:none; transition:transform .18s ease-out; }
     .viewer-shade { position:absolute; inset:45% 0 0; pointer-events:none; background:linear-gradient(transparent,#101714aa); }
@@ -230,6 +236,7 @@ interface TourHotspot {
 })
 export class TourArComponent implements OnInit, OnDestroy {
   private panoramaCanvas?: ElementRef<HTMLCanvasElement>;
+  @ViewChild('tourViewer') private tourViewer?: ElementRef<HTMLElement>;
   @ViewChild('expandButton') private expandButton?: ElementRef<HTMLButtonElement>;
   @ViewChild('closeButton') private closeButton?: ElementRef<HTMLButtonElement>;
   @ViewChild('panoramaCanvas')
@@ -268,6 +275,8 @@ export class TourArComponent implements OnInit, OnDestroy {
   isExpanded = false;
   activeHotspotId: HotspotId = 'bed';
   panoramaError = '';
+  panoramaLoading = false;
+  viewerNotice = '';
   private requestedRoomId: string | null = null;
   private dragStart: { x: number; y: number } | null = null;
   private lastPointerPosition: { x: number; y: number } | null = null;
@@ -286,6 +295,7 @@ export class TourArComponent implements OnInit, OnDestroy {
   private panoramaTexture: WebGLTexture | null = null;
   private resizeObserver: ResizeObserver | null = null;
   private loadedPanoramaUrl = '';
+  private panoramaRequestId = 0;
   private viewerInitializationStarted = false;
 
   constructor(private readonly roomService: RoomService, private readonly route: ActivatedRoute) {}
@@ -315,7 +325,7 @@ export class TourArComponent implements OnInit, OnDestroy {
   }
 
   get fallbackImageUrl(): string {
-    return this.selectedRoom ? getRoomImageUrl(this.selectedRoom.type) : '';
+    return this.roomImageUrl || (this.selectedRoom ? getRoomImageUrl(this.selectedRoom.type) : '');
   }
 
   get imageTransform(): string {
@@ -383,6 +393,7 @@ export class TourArComponent implements OnInit, OnDestroy {
   }
 
   selectRoom(room: Room): void {
+    this.stopViewerMotion();
     this.selectedRoom = room;
     this.activeSceneId = 'room';
     this.angle = 0;
@@ -392,6 +403,7 @@ export class TourArComponent implements OnInit, OnDestroy {
   }
 
   selectScene(sceneId: SceneId): void {
+    this.stopViewerMotion();
     this.activeSceneId = sceneId;
     this.angle = 0;
     this.verticalAngle = 0;
@@ -401,12 +413,36 @@ export class TourArComponent implements OnInit, OnDestroy {
 
   openExpandedViewer(): void {
     this.isExpanded = true;
-    requestAnimationFrame(() => this.closeButton?.nativeElement.focus());
+    this.viewerNotice = '';
+    const viewer = this.tourViewer?.nativeElement;
+    if (viewer?.requestFullscreen) {
+      void viewer.requestFullscreen().then(
+        () => this.closeButton?.nativeElement.focus(),
+        (error: unknown) => {
+          console.warn('El navegador no permitió el modo de pantalla completa; se mantiene el visor ampliado.', error);
+          this.viewerNotice = 'El navegador no permitió pantalla completa; el visor se abrió en modo ampliado.';
+          requestAnimationFrame(() => this.closeButton?.nativeElement.focus());
+        }
+      );
+    } else {
+      requestAnimationFrame(() => this.closeButton?.nativeElement.focus());
+    }
   }
 
   closeExpandedViewer(): void {
+    if (document.fullscreenElement === this.tourViewer?.nativeElement) {
+      void document.exitFullscreen();
+    }
     this.isExpanded = false;
     requestAnimationFrame(() => this.expandButton?.nativeElement.focus());
+  }
+
+  @HostListener('document:fullscreenchange')
+  onFullscreenChange(): void {
+    if (document.fullscreenElement !== this.tourViewer?.nativeElement && this.isExpanded) {
+      this.isExpanded = false;
+      requestAnimationFrame(() => this.expandButton?.nativeElement.focus());
+    }
   }
 
   rotate(degrees: number): void {
@@ -617,11 +653,21 @@ export class TourArComponent implements OnInit, OnDestroy {
 
   private loadPanorama(): void {
     const url = this.roomImageUrl;
-    if (!this.gl || !this.panoramaTexture || !url || this.loadedPanoramaUrl === url) return;
+    if (!this.gl || !this.panoramaTexture || !url) return;
+    if (this.loadedPanoramaUrl === url) {
+      this.panoramaLoading = false;
+      return;
+    }
+    const requestId = ++this.panoramaRequestId;
     this.panoramaError = '';
+    this.panoramaLoading = true;
+    this.loadedPanoramaUrl = '';
+    this.gl.viewport(0, 0, this.panoramaCanvas?.nativeElement.width ?? 1, this.panoramaCanvas?.nativeElement.height ?? 1);
+    this.gl.clearColor(0.08, 0.13, 0.11, 1);
+    this.gl.clear(this.gl.COLOR_BUFFER_BIT);
     const image = new Image();
     image.onload = () => {
-      if (this.roomImageUrl !== url) return;
+      if (requestId !== this.panoramaRequestId || this.roomImageUrl !== url) return;
       if (!this.gl || !this.panoramaTexture) return;
       this.gl.bindTexture(this.gl.TEXTURE_2D, this.panoramaTexture);
       this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, 1);
@@ -630,24 +676,41 @@ export class TourArComponent implements OnInit, OnDestroy {
       } catch (error) {
         console.error('El navegador no pudo subir la textura del panorama 360°.', error);
         this.panoramaError = 'El navegador no pudo preparar la imagen panorámica 360°.';
+        this.panoramaLoading = false;
         return;
       }
       const uploadError = this.gl.getError();
       if (uploadError !== this.gl.NO_ERROR) {
         console.error('El navegador no pudo subir la textura del panorama 360°.', uploadError);
         this.panoramaError = 'El navegador no pudo preparar la imagen panorámica 360°.';
+        this.panoramaLoading = false;
         return;
       }
       this.loadedPanoramaUrl = url;
       this.panoramaError = '';
+      this.panoramaLoading = false;
       this.resizePanorama();
     };
     image.onerror = (error) => {
-      if (this.roomImageUrl !== url) return;
+      if (requestId !== this.panoramaRequestId || this.roomImageUrl !== url) return;
       console.error('No se pudo cargar la imagen panorámica 360°.', error);
       this.panoramaError = 'No se pudo cargar la imagen panorámica 360°.';
+      this.panoramaLoading = false;
     };
     image.src = url;
+  }
+
+  private stopViewerMotion(): void {
+    this.dragStart = null;
+    this.lastPointerPosition = null;
+    this.pendingDragDelta = { x: 0, y: 0 };
+    this.angularVelocity = { yaw: 0, pitch: 0 };
+    this.pendingZoomDelta = 0;
+    this.lastFrameTime = 0;
+    if (this.dragFrameId !== null) {
+      cancelAnimationFrame(this.dragFrameId);
+      this.dragFrameId = null;
+    }
   }
 
   private resizePanorama(): void {
