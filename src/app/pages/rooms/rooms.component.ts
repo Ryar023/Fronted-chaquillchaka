@@ -59,7 +59,7 @@ import { RoomService } from '../../services/room.service';
         <p>{{ errorMessage }}</p><button class="text-link" type="button" (click)="loadRooms(true)">Volver a intentar</button>
       </div>
       <p *ngIf="roomsWarning" class="my-5 rounded border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950" role="status">{{ roomsWarning }}</p>
-      <div *ngIf="!loading && !errorMessage && rooms.length" class="grid gap-6 md:grid-cols-2">
+      <div *ngIf="!loading && !errorMessage && rooms.length" class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
         <app-room-card *ngFor="let room of rooms" [room]="room"></app-room-card>
       </div>
       <div *ngIf="!loading && !errorMessage && !rooms.length" class="py-14 text-center">

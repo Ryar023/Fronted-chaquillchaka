@@ -3,6 +3,7 @@ import { BrowserModule } from '@angular/platform-browser';
 import { HttpClientModule } from '@angular/common/http';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
+import { BottomNavComponent } from './components/bottom-nav/bottom-nav.component';
 import { AccessibilitySpeechComponent } from './accessibility-speech.component';
 import { BookingComponent } from './pages/booking/booking.component';
 import { NavbarComponent } from './components/navbar/navbar.component';
@@ -15,6 +16,7 @@ import { WhatsappFloatingButtonComponent } from './components/whatsapp-floating-
     AccessibilitySpeechComponent,
     HttpClientModule,
     AppRoutingModule,
+    BottomNavComponent,
     NavbarComponent,
     BookingComponent,
     WhatsappFloatingButtonComponent

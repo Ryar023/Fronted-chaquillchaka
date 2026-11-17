@@ -24,6 +24,7 @@ import { RouterModule } from '@angular/router';
         <nav id="site-navigation" class="site-nav" [class.is-open]="menuOpen" aria-label="Navegación principal">
           <a routerLink="/inicio" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMenu()">Inicio</a>
           <a routerLink="/habitaciones" routerLinkActive="active" (click)="closeMenu()">Habitaciones</a>
+          <a routerLink="/tour-ar" routerLinkActive="active" (click)="closeMenu()">Tour AR</a>
           <a routerLink="/ubicacion" routerLinkActive="active" (click)="closeMenu()">Ubicación</a>
           <a routerLink="/nosotros" routerLinkActive="active" (click)="closeMenu()">Nosotros</a>
           <a routerLink="/reserva" class="nav-booking" (click)="closeMenu()">Haz una reservación <span aria-hidden="true">↗</span></a>
@@ -43,13 +44,9 @@ import { RouterModule } from '@angular/router';
     .menu-toggle span { display:block; width:23px; height:2px; margin:5px; background:#183b32; }
     .skip-link { position:absolute; top:-60px; left:12px; z-index:60; border-radius:4px; background:#183b32; padding:10px 14px; color:#fff; }
     .skip-link:focus { top:8px; }
-    @media (max-width:760px) {
+    @media (max-width:767px) {
       .brand-logo { width:130px; }
-      .menu-toggle { display:block; }
-      .site-nav { position:absolute; top:75px; right:0; left:0; display:none; align-items:stretch; gap:0; border-bottom:1px solid #e5e7eb; background:white; padding:8px 20px 18px; box-shadow:0 16px 22px #17221f12; }
-      .site-nav.is-open { display:flex; flex-direction:column; }
-      .site-nav a { min-height:44px; display:flex; align-items:center; padding:10px 8px; }
-      .site-nav .nav-booking { margin-top:6px; text-align:center; }
+      .menu-toggle,.site-nav { display:none; }
     }
   `]
 })

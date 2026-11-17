@@ -86,6 +86,7 @@ import { AccessibilitySpeechComponent } from './accessibility-speech.component';
         <span class="footer-copyright">© {{ currentYear }} Chaquill Chak'a Hostal · Cusco, Perú</span>
       </div>
     </footer>
+    <app-bottom-nav [hidden]="hideBottomNavigation"></app-bottom-nav>
     <app-booking *ngIf="bookingOpen" [embedded]="true" [roomId]="bookingRoomId" (closed)="closeBooking()"></app-booking>
     <aside aria-label="Contacto por WhatsApp">
       <app-whatsapp-floating-button></app-whatsapp-floating-button>
@@ -122,6 +123,10 @@ import { AccessibilitySpeechComponent } from './accessibility-speech.component';
       .footer-logo { justify-self:end; }
       .footer-contact { grid-column:1/-1; align-items:center; text-align:center; }
     }
+    @media(max-width:767px) {
+      .accessibility-tools { top:88px; right:12px; bottom:auto; }
+      .accessibility-panel { top:64px; bottom:auto; max-height:calc(100dvh - 170px); }
+    }
   `]
 })
 export class AppComponent implements OnInit {
@@ -140,6 +145,9 @@ export class AppComponent implements OnInit {
 
   bookingOpen = false;
   bookingRoomId: string | null = null;
+  get hideBottomNavigation(): boolean {
+    return this.bookingOpen || this.router.url.startsWith('/reserva');
+  }
 
   constructor(private readonly router: Router, private readonly title: Title, private readonly cdr: ChangeDetectorRef) {}
 
@@ -167,6 +175,7 @@ export class AppComponent implements OnInit {
     document.addEventListener('click', (event: MouseEvent) => {
       if (event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey) return;
       const link = (event.target as HTMLElement | null)?.closest?.('a[href]') as HTMLAnchorElement | null;
+      if (link?.closest('app-bottom-nav') || link?.hasAttribute('data-direct-booking-navigation')) return;
       if (!link || link.origin !== location.origin || link.pathname !== '/reserva' || location.pathname === '/reserva') return;
       event.preventDefault();
       event.stopPropagation();

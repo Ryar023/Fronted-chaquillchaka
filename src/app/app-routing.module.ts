@@ -14,6 +14,11 @@ const routes: Routes = [
     title: 'Habitaciones | Chaquill Chak’a'
   },
   {
+    path: 'tour-ar',
+    loadComponent: () => import('./pages/tour-ar/tour-ar.component').then((module) => module.TourArComponent),
+    title: 'Tour inmersivo | Chaquill Chak’a'
+  },
+  {
     path: 'reserva',
     loadComponent: () => import('./pages/booking/booking.component').then((module) => module.BookingComponent),
     title: 'Haz una reservación | Chaquill Chak’a'

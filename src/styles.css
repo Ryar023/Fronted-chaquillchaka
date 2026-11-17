@@ -21,12 +21,13 @@
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body { margin: 0; min-width: 320px; background: var(--paper); }
+img, video, canvas, svg { max-width: 100%; }
 button, input, select, textarea { font: inherit; }
 a { color: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
-:focus-visible { outline: 3px solid #bd6a45; outline-offset: 3px; }
+:focus-visible { outline: 3px solid #0284c7; outline-offset: 3px; }
 main:focus { outline: none; }
-button, select, [role="button"] { min-height: 44px; }
+button, select, [role="button"] { min-width: 48px; min-height: 48px; }
 .text-link, .footer-contact a, .footer-social a, .map-open, .facebook-contact, .contact-phone { display: inline-flex !important; align-items: center; min-height: 44px !important; }
 .contact-phone, .facebook-contact { display: flex !important; }
 input[type="radio"], input[type="checkbox"] { width: 24px; height: 24px; }
@@ -85,7 +86,7 @@ body.a11y-accessible-font, body.a11y-accessible-font :is(h1,h2,h3,h4,h5,h6,p,but
 .field-error { color: #a12e21; font-size: .82rem; }
 .form-control { width: 100%; min-height: 48px; border: 1px solid #c7cdc7; border-radius: 4px; background: #fff; padding: .7rem .8rem; color: #17221f; }
 .form-control:focus { border-color: var(--forest); outline: 2px solid #183b3230; }
-.form-control:focus-visible { outline: 3px solid #8a3516; outline-offset: 3px; }
+.form-control:focus-visible { outline: 3px solid #0284c7; outline-offset: 3px; }
 .form-control[aria-invalid="true"] { border-color: #a12e21; }
 .surface-card { border: 1px solid #e5e6df; border-radius: 8px; background: #fff; box-shadow: 0 16px 44px #26362c0a; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; clip-path: inset(50%); }
@@ -107,6 +108,10 @@ app-about .review-modal .review-reactions { grid-column: 1/-1; border-top: 1px s
 
 @media (max-width: 640px) {
   .page-shell { width: min(100% - 28px, 1160px); }
+}
+@media (max-width: 767px) {
+  body { padding-bottom: calc(68px + env(safe-area-inset-bottom)); }
+  .page-shell { min-width: 0; }
 }
 @media (max-width: 700px) {
   app-about .review-modal { grid-template-columns: 1fr; gap: 12px; }

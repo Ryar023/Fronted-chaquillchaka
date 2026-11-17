@@ -2,6 +2,7 @@ import { Component, HostListener, Input, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { Room, RoomOccupancy } from '../../models/room.interface';
+import { getRoomImageUrl } from '../../models/room-image';
 import { RoomService } from '../../services/room.service';
 
 @Component({
@@ -34,6 +35,9 @@ import { RoomService } from '../../services/room.service';
         <button class="details-button" type="button" (click)="openGallery()">
           Ver detalles y fotos <span aria-hidden="true">→</span>
         </button>
+        <a class="tour-link" [routerLink]="['/tour-ar']" [queryParams]="{ roomId: room._id }">
+          Explorar en Tour AR <span aria-hidden="true">↗</span>
+        </a>
         <ul class="mt-5 flex flex-wrap gap-2 p-0" aria-label="Servicios incluidos">
           <li *ngFor="let service of room.services" class="service-badge">{{ service }}</li>
         </ul>
@@ -117,6 +121,7 @@ import { RoomService } from '../../services/room.service';
     .view-photos { position:absolute; right:13px; bottom:13px; border-radius:4px; background:#17221fd9; padding:8px 11px; color:#fff; font-size:12px; font-weight:700; }
     .room-type { position:absolute; left:16px; bottom:16px; border-radius:3px; background:#fff; padding:7px 11px; color:#183b32; font-size:12px; font-weight:750; pointer-events:none; }
     .details-button { display:inline-flex; min-height:44px; align-items:center; gap:8px; margin-top:16px; border:1px solid #183b32; border-radius:4px; background:#fff; padding:9px 12px; color:#183b32; font-size:13px; font-weight:700; cursor:pointer; }
+    .tour-link { display:inline-flex; min-height:48px; align-items:center; gap:8px; margin:16px 0 0 8px; border-radius:4px; padding:9px 12px; color:#183b32; font-size:13px; font-weight:700; text-underline-offset:3px; }
     .details-button:hover { background:#edf1ec; }
     .capacity { flex:none; border-radius:99px; background:#edf1ec; padding:6px 9px; color:#183b32; font-size:12px; font-weight:700; }
     .service-badge { list-style:none; border:1px solid #e4e7e2; border-radius:99px; padding:5px 9px; color:#4b5750; font-size:12px; }
@@ -178,13 +183,7 @@ export class RoomCardComponent implements OnInit {
   currentImageIndex = 0;
 
   get roomImageUrl(): string {
-    const imageByType: Record<Room['type'], string> = {
-      Simple: 'habitacion-simple.jpg',
-      Doble: 'habitacion-doble.jpg',
-      Matrimonial: 'habitacion-matrimonial.jpg',
-      Familiar: 'Habitacion familiar(2).jpg'
-    };
-    return `/assets/images/${encodeURIComponent(imageByType[this.room.type])}`;
+    return getRoomImageUrl(this.room.type);
   }
 
   get bedDescription(): string {

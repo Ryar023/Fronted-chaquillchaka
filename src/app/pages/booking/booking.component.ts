@@ -55,7 +55,7 @@ import { environment } from '../../../environments/environment';
             </label>
             <label class="field" for="booking-phone">
               <span>Teléfono / WhatsApp <span aria-hidden="true">*</span></span>
-              <input id="booking-phone" class="form-control" type="tel" formControlName="phone" autocomplete="tel" placeholder="+51 987 654 321" [attr.aria-invalid]="showError('phone')" aria-describedby="phone-error" aria-required="true">
+              <input id="booking-phone" class="form-control" type="tel" inputmode="tel" formControlName="phone" autocomplete="tel" placeholder="+51 987 654 321" [attr.aria-invalid]="showError('phone')" aria-describedby="phone-error" aria-required="true">
               <small *ngIf="showError('phone')" id="phone-error" class="field-error">Ingresa un teléfono válido.</small>
             </label>
             <label class="field sm:col-span-2" for="booking-room">
@@ -85,7 +85,7 @@ import { environment } from '../../../environments/environment';
             </label>
             <label class="field" for="booking-guests">
               <span>Número de huéspedes <span aria-hidden="true">*</span></span>
-              <input id="booking-guests" class="form-control" type="number" formControlName="guests" min="1" [max]="selectedRoom?.capacity || 20" step="1" [attr.aria-invalid]="showError('guests')" aria-describedby="guests-error" aria-required="true">
+              <input id="booking-guests" class="form-control" type="number" inputmode="numeric" formControlName="guests" min="1" [max]="selectedRoom?.capacity || 20" step="1" [attr.aria-invalid]="showError('guests')" aria-describedby="guests-error" aria-required="true">
               <small *ngIf="showError('guests')" id="guests-error" class="field-error">{{ selectedRoom ? 'Esta habitación admite hasta ' + selectedRoom.capacity + ' huéspedes.' : 'Ingresa al menos 1 huésped.' }}</small>
             </label>
             <fieldset class="payment-options sm:col-span-2">
@@ -187,7 +187,7 @@ import { environment } from '../../../environments/environment';
           </section>
           <p class="mt-6 rounded bg-stone-50 p-4 text-xs leading-5 text-stone-600">El servidor vuelve a comprobar la disponibilidad antes de registrar tu reserva. La selección de pago es una preferencia, no un cobro en línea. Después podrás imprimir o guardar tu comprobante; escribirnos por WhatsApp es opcional.</p>
           <p *ngIf="serverError" class="mt-4 rounded border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900" role="alert" aria-live="assertive">{{ serverError }}</p>
-          <button class="primary-button mt-5 w-full" type="submit" [disabled]="submitting || loadingRooms || rooms.length === 0">
+          <button class="primary-button booking-submit mt-5 w-full" type="submit" [disabled]="submitting || loadingRooms || rooms.length === 0">
             {{ submitting ? 'Verificando disponibilidad…' : 'Confirmar Reserva' }}
           </button>
         </form>
@@ -212,6 +212,7 @@ import { environment } from '../../../environments/environment';
     .payment-options{min-width:0;margin:0;border:0;padding:0}.payment-options legend{color:#26362e;font-size:13px;font-weight:700}.payment-options>p{margin:6px 0 12px;color:#59635d;font-size:12px;line-height:1.5}.payment-choice-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.payment-choice-grid label{position:relative;display:flex;min-height:54px;align-items:center;gap:7px;border:1px solid #d8ded7;border-radius:5px;background:#fff;padding:9px;color:#26362e;font-size:12px;cursor:pointer}.payment-choice-grid input{accent-color:#183b32}.payment-choice-grid label>span{display:grid;width:25px;height:25px;flex:none;place-items:center;border-radius:50%;background:#edf3ed;color:#183b32;font-size:12px;font-weight:800}.payment-choice-grid label small{margin-left:auto;color:#657168;font-size:12px}.payment-currency{max-width:260px;margin-top:13px}.payment-note{display:block;margin-top:10px;color:#606b63;font-size:12px;line-height:1.5}
     @media(max-width:760px){.booking-layout{grid-template-columns:1fr;padding-block:30px 65px}.booking-aside{order:-1}.aside-photo{height:190px}}
     @media(max-width:520px){.payment-choice-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:767px){.booking-submit{position:sticky;bottom:env(safe-area-inset-bottom);z-index:2;box-shadow:0 -8px 18px #fff9}}
     .pay-panel{display:flex;gap:16px;align-items:center;margin-top:14px;border:1px solid #cfe0d3;border-radius:8px;background:#f1f7f2;padding:14px;color:#26362e;font-size:14px;line-height:1.5}.pay-qr{border:1px solid #d8ded7;border-radius:6px;background:#fff;padding:6px}.pay-title{margin:0 0 6px;font-weight:700;color:#183b32}.pay-panel ol{margin:0;padding-left:18px}.demo-tag{display:inline-block;margin-left:6px;border-radius:999px;background:#fff3d6;color:#6b4a00;padding:2px 8px;font-size:12px;font-weight:700}.demo-note{margin:0 0 10px;color:#46544d;font-size:12px}.card-panel{display:block}.card-form{display:grid;gap:12px;max-width:420px}.card-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     .occupied-box{border:1px solid #e7c9a4;border-radius:6px;background:#fdf3e7;padding:10px 14px;color:#5a3512;font-size:13px}.occupied-box p{margin:0;font-weight:700}.occupied-box ul{margin:6px 0 0;padding-left:18px}
     .doc-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.invoice-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px}.invoice-wide{grid-column:1/-1}@media(max-width:520px){.invoice-fields{grid-template-columns:1fr}}
