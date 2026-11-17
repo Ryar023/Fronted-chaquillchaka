@@ -98,10 +98,10 @@ interface TourHotspot {
                 #expandButton
                 class="expand-viewer-button"
                 type="button"
-                aria-label="Abrir visor 360 grados a pantalla completa"
-                title="Abrir a pantalla completa"
+                aria-label="Abrir panorama 360 grados del patio"
+                title="Abrir panorama 360° del patio"
                 (pointerdown)="$event.stopPropagation()"
-                (click)="openExpandedViewer()">
+                (click)="openPatioPanorama()">
                 <svg aria-hidden="true" viewBox="0 0 24 24">
                   <path d="M12 5v14M5 12h14" />
                 </svg>
@@ -308,13 +308,13 @@ export class TourArComponent implements OnInit, OnDestroy {
     if (!this.selectedRoom) return '';
     if (this.activeSceneId === 'bathroom') return '/assets/images/HABITACION_BANO360.png';
     if (this.activeSceneId === 'shower') return '/assets/images/DUCHA360.png';
-    if (this.activeSceneId === 'breakfast') return '/assets/images/DESAYUNO360.png';
+    if (this.activeSceneId === 'breakfast') return '/assets/images/desayuno-comedor-360.png';
     if (this.activeSceneId === 'patio') return '/assets/images/PATIO.png';
     const roomPanoramas: Record<Room['type'], string> = {
       Simple: '/assets/images/panorama_habitacion_360_equirectangular.png',
       Doble: '/assets/images/HABITACION%2520DOBLE360.png',
       Matrimonial: '/assets/images/HABITACION%2520MATRIMONIAL360.png',
-      Familiar: '/assets/images/habitacion-familiar-360.png'
+      Familiar: '/assets/images/habitacion-panoramica-camas-madera.png'
     };
     return roomPanoramas[this.selectedRoom.type];
   }
@@ -427,6 +427,11 @@ export class TourArComponent implements OnInit, OnDestroy {
     } else {
       requestAnimationFrame(() => this.closeButton?.nativeElement.focus());
     }
+  }
+
+  openPatioPanorama(): void {
+    if (this.activeSceneId !== 'patio') this.selectScene('patio');
+    this.openExpandedViewer();
   }
 
   closeExpandedViewer(): void {
@@ -656,6 +661,7 @@ export class TourArComponent implements OnInit, OnDestroy {
     if (!this.gl || !this.panoramaTexture || !url) return;
     if (this.loadedPanoramaUrl === url) {
       this.panoramaLoading = false;
+      this.drawPanorama();
       return;
     }
     const requestId = ++this.panoramaRequestId;
@@ -672,7 +678,21 @@ export class TourArComponent implements OnInit, OnDestroy {
       this.gl.bindTexture(this.gl.TEXTURE_2D, this.panoramaTexture);
       this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, 1);
       try {
-        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, image);
+        let textureSource: TexImageSource = image;
+        if (!this.isPowerOfTwo(image.width) || !this.isPowerOfTwo(image.height)) {
+          const canvas = document.createElement('canvas');
+          canvas.width = this.nextPowerOfTwo(image.width);
+          canvas.height = this.nextPowerOfTwo(image.height);
+          const context = canvas.getContext('2d');
+          if (!context) {
+            this.panoramaError = 'No se pudo adaptar la imagen para el visor 360°.';
+            this.panoramaLoading = false;
+            return;
+          }
+          context.drawImage(image, 0, 0, canvas.width, canvas.height);
+          textureSource = canvas;
+        }
+        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, textureSource);
       } catch (error) {
         console.error('El navegador no pudo subir la textura del panorama 360°.', error);
         this.panoramaError = 'El navegador no pudo preparar la imagen panorámica 360°.';
@@ -711,6 +731,16 @@ export class TourArComponent implements OnInit, OnDestroy {
       cancelAnimationFrame(this.dragFrameId);
       this.dragFrameId = null;
     }
+  }
+
+  private isPowerOfTwo(value: number): boolean {
+    return value > 0 && (value & (value - 1)) === 0;
+  }
+
+  private nextPowerOfTwo(value: number): number {
+    let power = 1;
+    while (power < value) power *= 2;
+    return power;
   }
 
   private resizePanorama(): void {
