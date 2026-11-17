@@ -70,8 +70,10 @@ interface TourHotspot {
               tabindex="0"
               [attr.aria-label]="'Visor interactivo 360 grados de ' + activeSceneLabel + '. Usa las flechas para girar e inclinar la vista.'"
               (pointerdown)="startDrag($event)"
-              (pointerup)="endDrag($event)"
+              (pointermove)="moveDrag($event)"
+              (pointerup)="endDrag()"
               (pointercancel)="cancelDrag()"
+              (wheel)="onViewerWheel($event)"
               (keydown)="onViewerKeydown($event)">
               <canvas
                 #panoramaCanvas
@@ -97,7 +99,7 @@ interface TourHotspot {
                 (pointerdown)="$event.stopPropagation()"
                 (click)="openExpandedViewer()">
                 <svg aria-hidden="true" viewBox="0 0 24 24">
-                  <path d="M8 3H3v5M16 3h5v5M21 16v5h-5M3 16v5h5" />
+                  <path d="M12 5v14M5 12h14" />
                 </svg>
               </button>
               <div *ngIf="isExpanded" class="expanded-viewer-controls" role="group" aria-label="Controles del visor ampliado">
@@ -144,7 +146,7 @@ interface TourHotspot {
                 <button class="tour-button tilt-control" type="button" aria-label="Inclinar vista hacia abajo" (click)="tilt(-10)">↓ Mirar abajo</button>
               </ng-container>
             </div>
-            <p class="gesture-hint">En móvil, desliza horizontalmente. Con teclado, enfoca la imagen y usa ← / → para girar y ↑ / ↓ para inclinar. También puedes usar los botones.</p>
+            <p class="gesture-hint">Arrastra para mirar alrededor y usa la rueda del mouse para acercar o alejar. En móvil, desliza con un dedo. Con teclado, usa ← / → para girar y ↑ / ↓ para inclinar.</p>
             <p *ngIf="panoramaError" class="panorama-error" role="status">{{ panoramaError }} Se muestra la fotografía ilustrativa como alternativa.</p>
           </div>
 
@@ -178,7 +180,7 @@ interface TourHotspot {
     .scene-picker-button { min-width:48px; min-height:48px; border:1px solid #183b32; border-radius:6px; background:#fff; padding:8px 14px; color:#183b32; font:inherit; font-weight:700; cursor:pointer; }
     .scene-picker-button[aria-pressed="true"] { background:#e9f0e9; box-shadow:inset 0 0 0 2px #183b32; }
     .tour-layout { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(270px,.8fr); gap:24px; align-items:start; }
-    .tour-viewer { position:relative; min-height:320px; aspect-ratio:16/10; overflow:hidden; border-radius:10px; background:#202a24; touch-action:pan-y; cursor:grab; }
+    .tour-viewer { position:relative; min-height:320px; aspect-ratio:16/10; overflow:hidden; border-radius:10px; background:#202a24; touch-action:none; cursor:grab; }
     .tour-viewer:active { cursor:grabbing; }
     .tour-viewer-expanded { position:fixed; z-index:1200; inset:0; width:100vw; height:100vh; height:100dvh; min-height:0; aspect-ratio:auto; border-radius:0; cursor:grab; touch-action:none; }
     .expand-viewer-button,.expanded-control-button { display:grid; width:48px; min-width:48px; height:48px; min-height:48px; place-items:center; border:2px solid #fff; border-radius:8px; background:#183b32; color:#fff; cursor:pointer; box-shadow:0 2px 10px #0008; }
@@ -243,7 +245,6 @@ export class TourArComponent implements OnInit, OnDestroy {
   }
 
   readonly hotspots: TourHotspot[] = [
-    { id: 'bed', label: 'Cama', top: '48%', left: '28%', yaw: -18, pitch: -5 },
     { id: 'bath', label: 'Baño', top: '38%', left: '58%', yaw: 28, pitch: 8 },
     { id: 'patio', label: 'Patio', top: '55%', left: '80%', yaw: 62, pitch: -7 }
   ];
@@ -269,6 +270,16 @@ export class TourArComponent implements OnInit, OnDestroy {
   panoramaError = '';
   private requestedRoomId: string | null = null;
   private dragStart: { x: number; y: number } | null = null;
+  private lastPointerPosition: { x: number; y: number } | null = null;
+  private pendingDragDelta = { x: 0, y: 0 };
+  private dragFrameId: number | null = null;
+  private angularVelocity = { yaw: 0, pitch: 0 };
+  private lastFrameTime = 0;
+  private pendingZoomDelta = 0;
+  readonly horizontalSensitivity = 0.9;
+  readonly verticalSensitivity = 0.75;
+  readonly inertiaDamping = 0.78;
+  private fieldOfView = Math.PI / 2;
   private gl: WebGLRenderingContext | null = null;
   private program: WebGLProgram | null = null;
   private vertexBuffer: WebGLBuffer | null = null;
@@ -293,7 +304,7 @@ export class TourArComponent implements OnInit, OnDestroy {
       Simple: '/assets/images/panorama_habitacion_360_equirectangular.png',
       Doble: '/assets/images/HABITACION%2520DOBLE360.png',
       Matrimonial: '/assets/images/HABITACION%2520MATRIMONIAL360.png',
-      Familiar: '/assets/images/HABITACION%2520FAMILIAR360.png'
+      Familiar: '/assets/images/habitacion-familiar-360.png'
     };
     return roomPanoramas[this.selectedRoom.type];
   }
@@ -316,6 +327,7 @@ export class TourArComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    if (this.dragFrameId !== null) cancelAnimationFrame(this.dragFrameId);
     this.resizeObserver?.disconnect();
     if (this.gl && this.panoramaTexture) this.gl.deleteTexture(this.panoramaTexture);
     if (this.gl && this.vertexBuffer) this.gl.deleteBuffer(this.vertexBuffer);
@@ -323,7 +335,8 @@ export class TourArComponent implements OnInit, OnDestroy {
   }
 
   get activeHotspotTitle(): string {
-    return this.hotspots.find((hotspot) => hotspot.id === this.activeHotspotId)?.label ?? '';
+    return this.hotspots.find((hotspot) => hotspot.id === this.activeHotspotId)?.label
+      ?? (this.activeHotspotId === 'bed' ? 'Cama' : '');
   }
 
   get activeHotspotDescription(): string {
@@ -428,20 +441,44 @@ export class TourArComponent implements OnInit, OnDestroy {
   startDrag(event: PointerEvent): void {
     if (event.pointerType === 'mouse' && event.button !== 0) return;
     this.dragStart = { x: event.clientX, y: event.clientY };
+    this.lastPointerPosition = { x: event.clientX, y: event.clientY };
+    this.angularVelocity = { yaw: 0, pitch: 0 };
+    this.lastFrameTime = 0;
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
   }
 
-  endDrag(event: PointerEvent): void {
+  moveDrag(event: PointerEvent): void {
+    if (!this.dragStart || !this.lastPointerPosition) return;
+    this.pendingDragDelta.x += this.lastPointerPosition.x - event.clientX;
+    this.pendingDragDelta.y += this.lastPointerPosition.y - event.clientY;
+    this.lastPointerPosition = { x: event.clientX, y: event.clientY };
+    this.scheduleViewerFrame();
+  }
+
+  endDrag(): void {
     if (!this.dragStart) return;
-    const deltaX = this.dragStart.x - event.clientX;
-    const deltaY = this.dragStart.y - event.clientY;
     this.dragStart = null;
-    if (Math.abs(deltaX) >= 4) this.rotate(Math.round(deltaX * 0.5));
-    if (this.has360Panorama && Math.abs(deltaY) >= 4) this.tilt(Math.round(deltaY * 0.35));
+    this.lastPointerPosition = null;
+    if (Math.abs(this.angularVelocity.yaw) < 0.02) this.angularVelocity.yaw = 0;
+    if (Math.abs(this.angularVelocity.pitch) < 0.02) this.angularVelocity.pitch = 0;
+    if (this.angularVelocity.yaw || this.angularVelocity.pitch) this.scheduleViewerFrame();
   }
 
   cancelDrag(): void {
     this.dragStart = null;
+    this.lastPointerPosition = null;
+    this.angularVelocity = { yaw: 0, pitch: 0 };
+    this.pendingDragDelta = { x: 0, y: 0 };
+    if (this.dragFrameId !== null) {
+      cancelAnimationFrame(this.dragFrameId);
+      this.dragFrameId = null;
+    }
+  }
+
+  onViewerWheel(event: WheelEvent): void {
+    event.preventDefault();
+    this.pendingZoomDelta += event.deltaY;
+    this.scheduleViewerFrame();
   }
 
   onViewerKeydown(event: KeyboardEvent): void {
@@ -588,7 +625,13 @@ export class TourArComponent implements OnInit, OnDestroy {
       if (!this.gl || !this.panoramaTexture) return;
       this.gl.bindTexture(this.gl.TEXTURE_2D, this.panoramaTexture);
       this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, 1);
-      this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, image);
+      try {
+        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, image);
+      } catch (error) {
+        console.error('El navegador no pudo subir la textura del panorama 360°.', error);
+        this.panoramaError = 'El navegador no pudo preparar la imagen panorámica 360°.';
+        return;
+      }
       const uploadError = this.gl.getError();
       if (uploadError !== this.gl.NO_ERROR) {
         console.error('El navegador no pudo subir la textura del panorama 360°.', uploadError);
@@ -596,9 +639,11 @@ export class TourArComponent implements OnInit, OnDestroy {
         return;
       }
       this.loadedPanoramaUrl = url;
+      this.panoramaError = '';
       this.resizePanorama();
     };
     image.onerror = (error) => {
+      if (this.roomImageUrl !== url) return;
       console.error('No se pudo cargar la imagen panorámica 360°.', error);
       this.panoramaError = 'No se pudo cargar la imagen panorámica 360°.';
     };
@@ -628,7 +673,54 @@ export class TourArComponent implements OnInit, OnDestroy {
     gl.uniform2f(gl.getUniformLocation(program, 'u_resolution'), canvas.width, canvas.height);
     gl.uniform1f(gl.getUniformLocation(program, 'u_yaw'), this.angle * Math.PI / 180);
     gl.uniform1f(gl.getUniformLocation(program, 'u_pitch'), this.verticalAngle * Math.PI / 180);
+    gl.uniform1f(gl.getUniformLocation(program, 'u_fov'), this.fieldOfView);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+
+  private scheduleViewerFrame(): void {
+    if (this.dragFrameId === null) {
+      this.dragFrameId = requestAnimationFrame((time) => this.renderViewerFrame(time));
+    }
+  }
+
+  private renderViewerFrame(time: number): void {
+    this.dragFrameId = null;
+    const deltaTime = this.lastFrameTime ? Math.min(time - this.lastFrameTime, 32) : 16;
+    this.lastFrameTime = time;
+
+    const deltaX = this.pendingDragDelta.x;
+    const deltaY = this.pendingDragDelta.y;
+    this.pendingDragDelta = { x: 0, y: 0 };
+
+    if (deltaX || deltaY) {
+      this.angle = ((this.angle + deltaX * this.horizontalSensitivity) % 360 + 360) % 360;
+      this.verticalAngle = Math.max(-60, Math.min(60, this.verticalAngle + deltaY * this.verticalSensitivity));
+      this.angularVelocity.yaw = Math.max(-6, Math.min(6, deltaX * this.horizontalSensitivity * 16 / deltaTime));
+      this.angularVelocity.pitch = Math.max(-4, Math.min(4, deltaY * this.verticalSensitivity * 16 / deltaTime));
+    } else if (!this.dragStart && (this.angularVelocity.yaw || this.angularVelocity.pitch)) {
+      this.angle = ((this.angle + this.angularVelocity.yaw * deltaTime / 16) % 360 + 360) % 360;
+      this.verticalAngle = Math.max(-60, Math.min(60, this.verticalAngle + this.angularVelocity.pitch * deltaTime / 16));
+      const damping = Math.pow(this.inertiaDamping, deltaTime / 16);
+      this.angularVelocity.yaw *= damping;
+      this.angularVelocity.pitch *= damping;
+      if (Math.abs(this.angularVelocity.yaw) < 0.02) this.angularVelocity.yaw = 0;
+      if (Math.abs(this.angularVelocity.pitch) < 0.02) this.angularVelocity.pitch = 0;
+    }
+
+    if (this.pendingZoomDelta) {
+      this.fieldOfView = Math.max(
+        55 * Math.PI / 180,
+        Math.min(110 * Math.PI / 180, this.fieldOfView + this.pendingZoomDelta * 0.001)
+      );
+      this.pendingZoomDelta = 0;
+    }
+
+    this.drawPanorama();
+    if (this.pendingDragDelta.x || this.pendingDragDelta.y || this.pendingZoomDelta || (!this.dragStart && (this.angularVelocity.yaw || this.angularVelocity.pitch))) {
+      this.scheduleViewerFrame();
+    } else {
+      this.lastFrameTime = 0;
+    }
   }
 
   private normalizeAngle(degrees: number): number {
