@@ -52,7 +52,7 @@ import { ChatMessage, ChatService } from '../../services/chat.service';
 
         <p *ngIf="errorMessage" class="chat-error" role="alert">{{ errorMessage }}</p>
 
-        <form class="chat-composer" (ngSubmit)="sendMessage()">
+        <form class="chat-composer" (submit)="$event.preventDefault(); sendMessage()">
           <label class="sr-only" for="chat-message-input">Escribe tu mensaje</label>
           <input
             #messageInput
@@ -61,9 +61,9 @@ import { ChatMessage, ChatService } from '../../services/chat.service';
             autocomplete="off"
             placeholder="Escribe tu mensaje…"
             [value]="draft"
-            [disabled]="isSending || !sessionId"
+            [disabled]="isSending || isLoadingHistory || !sessionId"
             (input)="updateDraft($event)">
-          <button type="submit" class="send-button" aria-label="Enviar mensaje" [disabled]="!draft.trim() || isSending || !sessionId">
+          <button type="submit" class="send-button" aria-label="Enviar mensaje" [disabled]="!draft.trim() || isSending || isLoadingHistory || !sessionId">
             <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 12 20 4l-5 16-3-7-8-1Zm8 1 4-5"/></svg>
           </button>
         </form>
@@ -197,7 +197,7 @@ export class ChatboxComponent implements OnInit, AfterViewChecked {
 
   sendMessage(): void {
     const content = this.draft.trim();
-    if (!content || this.isSending || !this.sessionId) return;
+    if (!content || this.isSending || this.isLoadingHistory || !this.sessionId) return;
 
     this.draft = content;
     this.errorMessage = '';
@@ -209,7 +209,6 @@ export class ChatboxComponent implements OnInit, AfterViewChecked {
     }
     this.isSending = true;
     this.shouldScrollToBottom = true;
-    this.changeDetector.detectChanges();
 
     this.chatService.sendMessage(this.sessionId, content).subscribe({
       next: (reply) => {
@@ -217,6 +216,7 @@ export class ChatboxComponent implements OnInit, AfterViewChecked {
         this.draft = '';
         this.isSending = false;
         this.shouldScrollToBottom = true;
+        this.changeDetector.markForCheck();
       },
       error: (error: unknown) => {
         console.error('No se pudo enviar el mensaje al chat.', error);
@@ -226,6 +226,7 @@ export class ChatboxComponent implements OnInit, AfterViewChecked {
         this.isSending = false;
         this.errorMessage = 'No pudimos enviar tu mensaje. Revisa tu conexión e inténtalo de nuevo.';
         this.shouldScrollToBottom = true;
+        this.changeDetector.markForCheck();
       }
     });
   }
@@ -252,12 +253,14 @@ export class ChatboxComponent implements OnInit, AfterViewChecked {
         this.messages = messages;
         this.isLoadingHistory = false;
         this.shouldScrollToBottom = true;
+        this.changeDetector.markForCheck();
       },
       error: (error: unknown) => {
         if (requestId !== this.historyRequestId) return;
         console.error('No se pudo cargar el historial del chat.', error);
         this.isLoadingHistory = false;
         this.errorMessage = 'No pudimos cargar el historial. Puedes enviar un mensaje para continuar.';
+        this.changeDetector.markForCheck();
       }
     });
   }
