@@ -1,4 +1,4 @@
-import { AfterViewChecked, ChangeDetectorRef, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { AfterViewChecked, ChangeDetectorRef, Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { ChatMessage, ChatService } from '../../services/chat.service';
@@ -16,6 +16,29 @@ interface DisplayChatMessage extends ChatMessage {
   roomTypes: Room['type'][];
 }
 
+interface RecognitionResultEvent extends Event {
+  resultIndex: number;
+  results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }>;
+}
+
+interface RecognitionErrorEvent extends Event {
+  error: string;
+}
+
+interface BrowserSpeechRecognition {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: RecognitionResultEvent) => void) | null;
+  onerror: ((event: RecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
+  start(): void;
+  stop(): void;
+  abort(): void;
+}
+
+type RecognitionConstructor = new () => BrowserSpeechRecognition;
+
 @Component({
   selector: 'app-chatbox',
   standalone: true,
@@ -25,10 +48,10 @@ interface DisplayChatMessage extends ChatMessage {
       <div *ngIf="isOpen" id="chat-panel" class="chat-panel" role="dialog" aria-modal="false" aria-labelledby="chat-title">
         <header class="chat-header">
           <div class="chat-heading">
-            <span class="chat-avatar" aria-hidden="true">C</span>
+            <span class="chat-avatar" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3v3m-2-3h4M5 9a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V9Zm-2 2v3m18-3v3M9 11h.01M15 11h.01M9 15c2 1.5 4 1.5 6 0"/></svg></span>
             <div>
-              <h2 id="chat-title">Atención Chaquill Chak'a</h2>
-              <p>Estamos aquí para ayudarte</p>
+              <h2 id="chat-title">Asistente Chaquill Chak'a</h2>
+              <p>Tu ayuda para conocer el hostal</p>
             </div>
           </div>
           <div class="header-actions">
@@ -43,8 +66,8 @@ interface DisplayChatMessage extends ChatMessage {
           <div *ngIf="isLoadingHistory" class="conversation-status" role="status">Cargando conversación…</div>
           <div *ngIf="!isLoadingHistory && messages.length === 0" class="welcome-message">
             <span class="welcome-icon" aria-hidden="true">✦</span>
-            <h3>¡Hola! ¿En qué podemos ayudarte?</h3>
-            <p>Escríbenos sobre habitaciones, reservas o tu visita a Cusco.</p>
+            <h3>¡Bienvenido al chat!</h3>
+            <p>¿En qué podemos ayudarte? Pregúntanos por voz o por escrito sobre habitaciones, reservas y tu visita a Cusco.</p>
           </div>
           <div
             *ngFor="let message of messages"
@@ -56,6 +79,9 @@ interface DisplayChatMessage extends ChatMessage {
                 <ng-container *ngFor="let part of message.parts"><strong *ngIf="part.bold">{{ part.text }}</strong><ng-container *ngIf="!part.bold">{{ part.text }}</ng-container></ng-container>
                 <span *ngIf="message.failed" class="failed-message">No se envió. Puedes volver a intentarlo.</span>
               </div>
+              <button *ngIf="message.role === 'assistant' && speechSupported" type="button" class="listen-button" [disabled]="isListening" (click)="toggleSpeech(message)">
+                {{ speakingMessage === message ? '■ Detener audio' : '▶ Escuchar respuesta' }}
+              </button>
               <div *ngIf="message.roomTypes.length" class="room-suggestions">
                 <p class="room-suggestions-label">Habitaciones mencionadas</p>
                 <article *ngFor="let type of message.roomTypes" class="chat-room-card">
@@ -87,6 +113,7 @@ interface DisplayChatMessage extends ChatMessage {
         </div>
 
         <p *ngIf="errorMessage" class="chat-error" role="alert">{{ errorMessage }}</p>
+        <p *ngIf="voiceMessage" class="voice-status" role="status">{{ voiceMessage }}</p>
 
         <form class="chat-composer" (submit)="$event.preventDefault(); sendMessage()">
           <label class="sr-only" for="chat-message-input">Escribe tu mensaje</label>
@@ -97,13 +124,17 @@ interface DisplayChatMessage extends ChatMessage {
             autocomplete="off"
             placeholder="Escribe tu mensaje…"
             [value]="draft"
-            [disabled]="isSending || isLoadingHistory || !sessionId"
+            [disabled]="isSending || isLoadingHistory || isListening || !sessionId"
             (input)="updateDraft($event)">
-          <button type="submit" class="send-button" aria-label="Enviar mensaje" [disabled]="!draft.trim() || isSending || isLoadingHistory || !sessionId">
+          <button type="button" class="mic-button" [class.listening]="isListening" [disabled]="isSending || isLoadingHistory || isStopping || !sessionId || !recognitionSupported" [attr.aria-pressed]="isListening" [attr.aria-label]="isListening ? 'Terminar de hablar y enviar' : 'Hablar con el asistente'" (click)="toggleRecognition()">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3ZM5 11a7 7 0 0 0 14 0M12 18v3m-3 0h6"/></svg>
+          </button>
+          <button type="submit" class="send-button" aria-label="Enviar mensaje" [disabled]="!draft.trim() || isSending || isLoadingHistory || isListening || !sessionId">
             <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 12 20 4l-5 16-3-7-8-1Zm8 1 4-5"/></svg>
           </button>
         </form>
-        <p class="chat-footnote">Las respuestas se guardan para esta conversación.</p>
+        <p class="chat-footnote" *ngIf="recognitionSupported">La voz se procesa mediante el navegador y se envía al terminar de hablar.</p>
+        <p class="chat-footnote" *ngIf="!recognitionSupported">El micrófono no está disponible en este navegador; puedes escribir.</p>
       </div>
 
       <button
@@ -128,7 +159,8 @@ interface DisplayChatMessage extends ChatMessage {
     .chat-panel { position:absolute; right:0; bottom:calc(100% + 14px); display:flex; width:min(390px,calc(100vw - 28px)); height:min(590px,calc(100dvh - 230px)); min-height:340px; flex-direction:column; overflow:hidden; border:1px solid #dfe5dc; border-radius:16px; background:#fff; box-shadow:0 18px 55px #14231f30; }
     .chat-header { display:flex; min-height:76px; align-items:center; justify-content:space-between; gap:10px; background:var(--forest,#183b32); padding:12px 14px; color:#fff; }
     .chat-heading { display:flex; min-width:0; align-items:center; gap:10px; }
-    .chat-avatar { display:grid; width:40px; height:40px; flex:none; place-items:center; border:1px solid #ffffff80; border-radius:50%; background:#ffffff1a; font-family:Georgia,serif; font-size:21px; }
+    .chat-avatar { display:grid; width:40px; height:40px; flex:none; place-items:center; border:1px solid #ffffff80; border-radius:50%; background:#ffffff1a; }
+    .chat-avatar svg { width:25px; height:25px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
     .chat-heading h2 { margin:0; font-size:14px; font-weight:750; line-height:1.3; }
     .chat-heading p { margin:3px 0 0; color:#e3ebe5; font-size:11px; }
     .header-actions { display:flex; flex:none; align-items:center; gap:6px; }
@@ -149,6 +181,9 @@ interface DisplayChatMessage extends ChatMessage {
     .message-bubble { border-radius:14px; padding:10px 12px; font-size:13px; line-height:1.55; overflow-wrap:anywhere; white-space:pre-wrap; }
     .user-message { border-bottom-right-radius:4px; background:#183b32; color:#fff; }
     .bot-message { border-bottom-left-radius:4px; background:#fff; color:#26362e; box-shadow:0 1px 3px #15291f12; }
+    .listen-button { min-width:0; min-height:40px; margin-top:5px; border:0; border-radius:5px; background:transparent; padding:6px; color:#315342; font-size:12px; font-weight:700; cursor:pointer; }
+    .listen-button:hover { background:#e9f0e9; }
+    .listen-button:disabled { opacity:.5; cursor:not-allowed; }
     .room-suggestions { display:grid; gap:9px; margin-top:10px; }
     .room-suggestions-label { margin:0; color:#59635d; font-size:11px; font-weight:700; }
     .chat-room-card { overflow:hidden; border:1px solid #e0e6df; border-radius:10px; background:#fff; box-shadow:0 2px 8px #15291f0d; }
@@ -163,6 +198,7 @@ interface DisplayChatMessage extends ChatMessage {
     .chat-room-actions a:hover { text-decoration:underline; }
     .failed-message { display:block; margin-top:5px; color:#ffd2c9; font-size:11px; }
     .chat-error { margin:0; border-top:1px solid #f1d2cc; background:#fff5f3; padding:8px 14px; color:#8c1d18; font-size:12px; line-height:1.4; }
+    .voice-status { margin:0; padding:7px 14px; background:#edf3ed; color:#183b32; font-size:12px; line-height:1.4; }
     .typing-indicator { display:flex; min-width:56px; align-items:center; gap:4px; padding:14px 13px; }
     .typing-indicator > span:not(.sr-only) { width:6px; height:6px; border-radius:50%; background:#78837c; animation:typing-bounce 1.1s infinite ease-in-out; }
     .typing-indicator > span:nth-child(2) { animation-delay:.15s; }
@@ -171,6 +207,10 @@ interface DisplayChatMessage extends ChatMessage {
     .chat-composer input { width:100%; min-width:0; min-height:44px; border:1px solid #d4d9d3; border-radius:22px; background:#fff; padding:0 14px; color:#17221f; font-size:13px; outline:none; }
     .chat-composer input:focus { border-color:#183b32; box-shadow:0 0 0 2px #183b3220; }
     .chat-composer input:disabled { background:#f3f5f2; }
+    .mic-button { display:grid; width:44px; min-width:44px; height:44px; min-height:44px; place-items:center; border:1px solid #c8d3ca; border-radius:50%; background:#f0f5f0; color:#183b32; cursor:pointer; }
+    .mic-button.listening { background:#a12e21; border-color:#a12e21; color:#fff; }
+    .mic-button:disabled { opacity:.45; cursor:not-allowed; }
+    .mic-button svg { width:21px; height:21px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
     .send-button { display:grid; width:44px; min-width:44px; height:44px; min-height:44px; place-items:center; border:0; border-radius:50%; background:#183b32; color:#fff; cursor:pointer; }
     .send-button:hover { background:#245447; }
     .send-button:disabled { background:#b9c3bc; cursor:not-allowed; }
@@ -195,7 +235,7 @@ interface DisplayChatMessage extends ChatMessage {
     }
   `]
 })
-export class ChatboxComponent implements OnInit, AfterViewChecked {
+export class ChatboxComponent implements OnInit, AfterViewChecked, OnDestroy {
   @ViewChild('messagesContainer') private messagesContainer?: ElementRef<HTMLElement>;
   @ViewChild('messageInput') private messageInput?: ElementRef<HTMLInputElement>;
   @ViewChild('toggleButton') private toggleButton?: ElementRef<HTMLButtonElement>;
@@ -209,6 +249,15 @@ export class ChatboxComponent implements OnInit, AfterViewChecked {
   messages: DisplayChatMessage[] = [];
   rooms: Room[] = [];
   catalogError = false;
+  readonly recognitionConstructor: RecognitionConstructor | undefined = this.getRecognitionConstructor();
+  readonly recognitionSupported = !!this.recognitionConstructor && window.isSecureContext;
+  readonly speechSupported = typeof window !== 'undefined' && 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
+  isListening = false;
+  isStopping = false;
+  voiceMessage = '';
+  speakingMessage: DisplayChatMessage | null = null;
+  private recognition: BrowserSpeechRecognition | null = null;
+  private utterance: SpeechSynthesisUtterance | null = null;
   private catalogRequested = false;
   private shouldScrollToBottom = false;
   private historyRequestId = 0;
@@ -235,16 +284,20 @@ export class ChatboxComponent implements OnInit, AfterViewChecked {
   }
 
   toggleChat(): void {
-    this.isOpen = !this.isOpen;
     if (this.isOpen) {
-      this.loadRoomCatalog();
-      requestAnimationFrame(() => this.messageInput?.nativeElement.focus());
-      this.shouldScrollToBottom = true;
+      this.closeChat();
+      return;
     }
+    this.isOpen = true;
+    this.loadRoomCatalog();
+    requestAnimationFrame(() => this.messageInput?.nativeElement.focus());
+    this.shouldScrollToBottom = true;
   }
 
   closeChat(): void {
     if (!this.isOpen) return;
+    this.cancelRecognition();
+    this.stopSpeech();
     this.isOpen = false;
     requestAnimationFrame(() => this.toggleButton?.nativeElement.focus());
   }
@@ -255,7 +308,7 @@ export class ChatboxComponent implements OnInit, AfterViewChecked {
 
   sendMessage(): void {
     const content = this.draft.trim();
-    if (!content || this.isSending || this.isLoadingHistory || !this.sessionId) return;
+    if (!content || this.isSending || this.isLoadingHistory || this.isListening || !this.sessionId) return;
 
     this.draft = content;
     this.errorMessage = '';
@@ -291,6 +344,8 @@ export class ChatboxComponent implements OnInit, AfterViewChecked {
 
   startNewConversation(): void {
     try {
+      this.cancelRecognition();
+      this.stopSpeech();
       this.sessionId = this.chatService.startNewSession();
       this.messages = [];
       this.draft = '';
@@ -299,6 +354,133 @@ export class ChatboxComponent implements OnInit, AfterViewChecked {
     } catch {
       this.errorMessage = 'No se pudo iniciar una nueva conversación en este navegador.';
     }
+  }
+
+  ngOnDestroy(): void {
+    this.cancelRecognition();
+    this.stopSpeech();
+  }
+
+  toggleRecognition(): void {
+    if (this.recognition) {
+      this.voiceMessage = 'Terminando de escuchar…';
+      this.isStopping = true;
+      try {
+        this.recognition.stop();
+      } catch (error) {
+        console.error('No se pudo detener el reconocimiento de voz.', error);
+        this.cancelRecognition();
+        this.voiceMessage = 'No se pudo terminar de escuchar. Vuelve a intentarlo.';
+      }
+      return;
+    }
+    if (!this.recognitionSupported || !this.recognitionConstructor || this.isSending || this.isLoadingHistory || !this.sessionId) return;
+    if (this.draft.trim()) {
+      this.voiceMessage = 'Envía o borra el mensaje escrito antes de usar el micrófono.';
+      return;
+    }
+
+    this.stopSpeech();
+    const recognition = new this.recognitionConstructor();
+    let transcript = '';
+    let recognitionFailed = false;
+    recognition.lang = 'es-PE';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.onresult = (event) => {
+      for (let index = event.resultIndex; index < event.results.length; index++) {
+        const result = event.results[index];
+        if (result.isFinal) transcript += `${result[0].transcript} `;
+      }
+    };
+    recognition.onerror = (event) => {
+      if (this.recognition !== recognition) return;
+      recognitionFailed = true;
+      console.error('No se pudo reconocer la voz del chat.', event.error);
+      this.voiceMessage = event.error === 'not-allowed' || event.error === 'service-not-allowed'
+        ? 'No se permitió usar el micrófono. Revisa los permisos del navegador.'
+        : 'No se pudo reconocer la voz. Comprueba tu micrófono y vuelve a intentarlo.';
+      this.changeDetector.markForCheck();
+    };
+    recognition.onend = () => {
+      if (this.recognition !== recognition) return;
+      this.recognition = null;
+      this.isListening = false;
+      this.isStopping = false;
+      if (!recognitionFailed && transcript.trim()) {
+        this.draft = transcript.trim();
+        this.voiceMessage = '';
+        this.sendMessage();
+      } else if (!recognitionFailed) {
+        this.voiceMessage = 'No escuchamos ningún mensaje. Pulsa el micrófono para intentarlo de nuevo.';
+      }
+      this.changeDetector.markForCheck();
+    };
+    this.recognition = recognition;
+    this.isListening = true;
+    this.voiceMessage = 'Escuchando… El mensaje se enviará al terminar de hablar.';
+    try {
+      recognition.start();
+    } catch (error) {
+      console.error('No se pudo activar el reconocimiento de voz.', error);
+      this.recognition = null;
+      this.isListening = false;
+      this.isStopping = false;
+      this.voiceMessage = 'No se pudo activar el micrófono. Vuelve a intentarlo o escribe tu mensaje.';
+    }
+  }
+
+  toggleSpeech(message: DisplayChatMessage): void {
+    if (!this.speechSupported) return;
+    if (this.speakingMessage === message) {
+      this.stopSpeech();
+      return;
+    }
+    this.stopSpeech();
+    const utterance = new SpeechSynthesisUtterance(message.parts.map((part) => part.text).join(''));
+    utterance.lang = 'es-PE';
+    this.utterance = utterance;
+    this.speakingMessage = message;
+    utterance.onend = () => {
+      if (this.utterance !== utterance) return;
+      this.utterance = null;
+      this.speakingMessage = null;
+      this.changeDetector.markForCheck();
+    };
+    utterance.onerror = (event) => {
+      if (this.utterance !== utterance) return;
+      this.utterance = null;
+      this.speakingMessage = null;
+      if (event.error !== 'canceled' && event.error !== 'interrupted') {
+        console.error('No se pudo reproducir la respuesta del chat.', event.error);
+        this.voiceMessage = 'No se pudo reproducir la respuesta. Revisa el audio del dispositivo.';
+      }
+      this.changeDetector.markForCheck();
+    };
+    window.speechSynthesis.speak(utterance);
+  }
+
+  private getRecognitionConstructor(): RecognitionConstructor | undefined {
+    if (typeof window === 'undefined') return undefined;
+    const browser = window as Window & { SpeechRecognition?: RecognitionConstructor; webkitSpeechRecognition?: RecognitionConstructor };
+    return browser.SpeechRecognition ?? browser.webkitSpeechRecognition;
+  }
+
+  private cancelRecognition(): void {
+    if (!this.recognition) return;
+    const recognition = this.recognition;
+    this.recognition = null;
+    this.isListening = false;
+    this.isStopping = false;
+    this.voiceMessage = '';
+    recognition.abort();
+  }
+
+  private stopSpeech(): void {
+    if (!this.utterance) return;
+    this.utterance = null;
+    this.speakingMessage = null;
+    window.speechSynthesis.cancel();
   }
 
   private loadHistory(): void {
