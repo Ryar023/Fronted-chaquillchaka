@@ -91,6 +91,7 @@ import { AccessibilitySpeechComponent } from './accessibility-speech.component';
     <aside aria-label="Contacto por WhatsApp">
       <app-whatsapp-floating-button></app-whatsapp-floating-button>
     </aside>
+    <app-chatbox></app-chatbox>
   `,
   styles: [`
     .accessibility-tools { position:fixed; bottom:16px; right:16px; z-index:49; }

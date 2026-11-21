@@ -8,6 +8,7 @@ import { AccessibilitySpeechComponent } from './accessibility-speech.component';
 import { BookingComponent } from './pages/booking/booking.component';
 import { NavbarComponent } from './components/navbar/navbar.component';
 import { WhatsappFloatingButtonComponent } from './components/whatsapp-floating-button/whatsapp-floating-button.component';
+import { ChatboxComponent } from './components/chatbox/chatbox.component';
 
 @NgModule({
   declarations: [AppComponent],
@@ -19,7 +20,8 @@ import { WhatsappFloatingButtonComponent } from './components/whatsapp-floating-
     BottomNavComponent,
     NavbarComponent,
     BookingComponent,
-    WhatsappFloatingButtonComponent
+    WhatsappFloatingButtonComponent,
+    ChatboxComponent
   ],
   bootstrap: [AppComponent]
 })

@@ -54,7 +54,8 @@
               "buildTarget": "chaquill-chaka:build:production"
             },
             "development": {
-              "buildTarget": "chaquill-chaka:build:development"
+              "buildTarget": "chaquill-chaka:build:development",
+              "proxyConfig": "src/proxy.conf.json"
             }
           },
           "defaultConfiguration": "development"
