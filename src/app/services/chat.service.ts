@@ -102,7 +102,7 @@ export class ChatService {
 
     const role = entry['role'];
     const content = entry['content'] ?? entry['text'];
-    if (typeof content === 'string' && (role === 'user' || role === 'assistant' || role === 'bot')) {
+    if (typeof content === 'string' && (role === 'user' || role === 'assistant' || role === 'bot' || role === 'model')) {
       return [{ role: role === 'user' ? 'user' : 'assistant', content }];
     }
 

@@ -1,11 +1,25 @@
 import { AfterViewChecked, ChangeDetectorRef, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
 import { ChatMessage, ChatService } from '../../services/chat.service';
+import { Room } from '../../models/room.interface';
+import { getRoomImageUrl } from '../../models/room-image';
+import { RoomService } from '../../services/room.service';
+
+interface ChatTextPart {
+  text: string;
+  bold: boolean;
+}
+
+interface DisplayChatMessage extends ChatMessage {
+  parts: ChatTextPart[];
+  roomTypes: Room['type'][];
+}
 
 @Component({
   selector: 'app-chatbox',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterModule],
   template: `
     <section class="chatbox" (keydown.escape)="closeChat()">
       <div *ngIf="isOpen" id="chat-panel" class="chat-panel" role="dialog" aria-modal="false" aria-labelledby="chat-title">
@@ -37,9 +51,31 @@ import { ChatMessage, ChatService } from '../../services/chat.service';
             class="message-row"
             [class.user-row]="message.role === 'user'"
             [class.bot-row]="message.role === 'assistant'">
-            <div class="message-bubble" [class.user-message]="message.role === 'user'" [class.bot-message]="message.role === 'assistant'">
-              {{ message.content }}
-              <span *ngIf="message.failed" class="failed-message">No se envió. Puedes volver a intentarlo.</span>
+            <div class="message-content">
+              <div class="message-bubble" [class.user-message]="message.role === 'user'" [class.bot-message]="message.role === 'assistant'">
+                <ng-container *ngFor="let part of message.parts"><strong *ngIf="part.bold">{{ part.text }}</strong><ng-container *ngIf="!part.bold">{{ part.text }}</ng-container></ng-container>
+                <span *ngIf="message.failed" class="failed-message">No se envió. Puedes volver a intentarlo.</span>
+              </div>
+              <div *ngIf="message.roomTypes.length" class="room-suggestions">
+                <p class="room-suggestions-label">Habitaciones mencionadas</p>
+                <article *ngFor="let type of message.roomTypes" class="chat-room-card">
+                  <a class="chat-room-image-link" routerLink="/habitaciones" (click)="closeChat()" [attr.aria-label]="'Ver habitaciones: ' + type">
+                    <img [src]="roomImageUrl(type)" [alt]="'Habitación ' + type" loading="lazy" (load)="onRoomImageLoad()" (error)="onRoomImageError($event)">
+                    <span>Ver habitaciones <span aria-hidden="true">↗</span></span>
+                  </a>
+                  <div class="chat-room-details">
+                    <strong>Habitación {{ type }}</strong>
+                    <ng-container *ngIf="findRoom(type) as room">
+                      <p>Hasta {{ room.capacity }} {{ room.capacity === 1 ? 'persona' : 'personas' }} · Desde S/ {{ room.pricePen | number:'1.0-0' }} / noche</p>
+                      <div class="chat-room-actions">
+                        <a [routerLink]="['/tour-ar']" [queryParams]="{ roomId: room._id }" (click)="closeChat()">Tour 360°</a>
+                        <a [routerLink]="['/reserva']" [queryParams]="{ roomId: room._id }" data-direct-booking-navigation (click)="closeChat()">Reservar</a>
+                      </div>
+                    </ng-container>
+                    <p *ngIf="catalogError && !findRoom(type)" class="room-catalog-warning">Consulta los detalles en Habitaciones.</p>
+                  </div>
+                </article>
+              </div>
             </div>
           </div>
           <div *ngIf="isSending" class="message-row bot-row" role="status" aria-label="El asistente está escribiendo">
@@ -109,9 +145,22 @@ import { ChatMessage, ChatService } from '../../services/chat.service';
     .message-row { display:flex; width:100%; }
     .user-row { justify-content:flex-end; }
     .bot-row { justify-content:flex-start; }
-    .message-bubble { max-width:84%; border-radius:14px; padding:10px 12px; font-size:13px; line-height:1.5; overflow-wrap:anywhere; white-space:pre-wrap; }
+    .message-content { max-width:90%; min-width:0; }
+    .message-bubble { border-radius:14px; padding:10px 12px; font-size:13px; line-height:1.55; overflow-wrap:anywhere; white-space:pre-wrap; }
     .user-message { border-bottom-right-radius:4px; background:#183b32; color:#fff; }
     .bot-message { border-bottom-left-radius:4px; background:#fff; color:#26362e; box-shadow:0 1px 3px #15291f12; }
+    .room-suggestions { display:grid; gap:9px; margin-top:10px; }
+    .room-suggestions-label { margin:0; color:#59635d; font-size:11px; font-weight:700; }
+    .chat-room-card { overflow:hidden; border:1px solid #e0e6df; border-radius:10px; background:#fff; box-shadow:0 2px 8px #15291f0d; }
+    .chat-room-image-link { position:relative; display:block; height:130px; overflow:hidden; background:#e9ede8; }
+    .chat-room-image-link img { display:block; width:100%; height:100%; object-fit:cover; }
+    .chat-room-image-link > span { position:absolute; right:8px; bottom:8px; border-radius:5px; background:#17221fe8; padding:5px 8px; color:#fff; font-size:11px; font-weight:700; }
+    .chat-room-details { padding:10px 12px; color:#183b32; font-size:13px; }
+    .chat-room-details p { margin:4px 0 0; color:#59635d; font-size:11px; line-height:1.5; }
+    .chat-room-actions { display:flex; flex-wrap:wrap; gap:7px; margin-top:9px; }
+    .chat-room-actions a { display:inline-flex; min-height:40px; align-items:center; justify-content:center; flex:1; border:1px solid #183b32; border-radius:5px; padding:7px 9px; color:#183b32; font-size:12px; font-weight:700; text-decoration:none; }
+    .chat-room-actions a:last-child { background:#183b32; color:#fff; }
+    .chat-room-actions a:hover { text-decoration:underline; }
     .failed-message { display:block; margin-top:5px; color:#ffd2c9; font-size:11px; }
     .chat-error { margin:0; border-top:1px solid #f1d2cc; background:#fff5f3; padding:8px 14px; color:#8c1d18; font-size:12px; line-height:1.4; }
     .typing-indicator { display:flex; min-width:56px; align-items:center; gap:4px; padding:14px 13px; }
@@ -157,11 +206,18 @@ export class ChatboxComponent implements OnInit, AfterViewChecked {
   sessionId = '';
   draft = '';
   errorMessage = '';
-  messages: ChatMessage[] = [];
+  messages: DisplayChatMessage[] = [];
+  rooms: Room[] = [];
+  catalogError = false;
+  private catalogRequested = false;
   private shouldScrollToBottom = false;
   private historyRequestId = 0;
 
-  constructor(private readonly chatService: ChatService, private readonly changeDetector: ChangeDetectorRef) {}
+  constructor(
+    private readonly chatService: ChatService,
+    private readonly roomService: RoomService,
+    private readonly changeDetector: ChangeDetectorRef
+  ) {}
 
   ngOnInit(): void {
     try {
@@ -181,7 +237,9 @@ export class ChatboxComponent implements OnInit, AfterViewChecked {
   toggleChat(): void {
     this.isOpen = !this.isOpen;
     if (this.isOpen) {
+      this.loadRoomCatalog();
       requestAnimationFrame(() => this.messageInput?.nativeElement.focus());
+      this.shouldScrollToBottom = true;
     }
   }
 
@@ -205,14 +263,14 @@ export class ChatboxComponent implements OnInit, AfterViewChecked {
     if (previousMessage?.role === 'user' && previousMessage.failed && previousMessage.content === content) {
       previousMessage.failed = false;
     } else {
-      this.messages.push({ role: 'user', content });
+      this.messages.push(this.toDisplayMessage({ role: 'user', content }));
     }
     this.isSending = true;
     this.shouldScrollToBottom = true;
 
     this.chatService.sendMessage(this.sessionId, content).subscribe({
       next: (reply) => {
-        this.messages.push({ role: 'assistant', content: reply });
+        this.messages.push(this.toDisplayMessage({ role: 'assistant', content: reply }));
         this.draft = '';
         this.isSending = false;
         this.shouldScrollToBottom = true;
@@ -250,7 +308,7 @@ export class ChatboxComponent implements OnInit, AfterViewChecked {
     this.chatService.getHistory(this.sessionId).subscribe({
       next: (messages) => {
         if (requestId !== this.historyRequestId) return;
-        this.messages = messages;
+        this.messages = messages.map((message) => this.toDisplayMessage(message));
         this.isLoadingHistory = false;
         this.shouldScrollToBottom = true;
         this.changeDetector.markForCheck();
@@ -263,5 +321,68 @@ export class ChatboxComponent implements OnInit, AfterViewChecked {
         this.changeDetector.markForCheck();
       }
     });
+  }
+
+  readonly roomImageUrl = getRoomImageUrl;
+
+  findRoom(type: Room['type']): Room | undefined {
+    return this.rooms.find((room) => room.type === type);
+  }
+
+  onRoomImageLoad(): void {
+    this.shouldScrollToBottom = true;
+    this.changeDetector.markForCheck();
+  }
+
+  onRoomImageError(event: Event): void {
+    const image = event.target as HTMLImageElement;
+    if (!image.dataset['fallbackAttempted']) {
+      console.warn('No se pudo cargar la foto de la habitación del chat.', image.src);
+      image.dataset['fallbackAttempted'] = 'true';
+      image.src = '/assets/images/slide_habitacion.jpg';
+    } else {
+      console.error('No se pudo cargar la foto alternativa de la habitación del chat.');
+    }
+  }
+
+  private loadRoomCatalog(): void {
+    if (this.catalogRequested) return;
+    this.catalogRequested = true;
+    this.rooms = this.roomService.getCachedRooms();
+    this.roomService.getRooms().subscribe({
+      next: (rooms) => {
+        this.rooms = rooms;
+        this.catalogError = false;
+        this.shouldScrollToBottom = true;
+        this.changeDetector.markForCheck();
+      },
+      error: (error: unknown) => {
+        console.warn('No se pudo actualizar el catálogo de habitaciones del chat.', error);
+        this.catalogError = true;
+        this.catalogRequested = false;
+        this.changeDetector.markForCheck();
+      }
+    });
+  }
+
+  private toDisplayMessage(message: ChatMessage): DisplayChatMessage {
+    const parts = message.role === 'assistant'
+      ? message.content.split(/(\*\*[^*\n]+\*\*)/g).filter(Boolean).map((part) => {
+        const bold = part.startsWith('**') && part.endsWith('**');
+        return { text: bold ? part.slice(2, -2) : part, bold };
+      })
+      : [{ text: message.content, bold: false }];
+    const roomTypes: Room['type'][] = [];
+    if (message.role === 'assistant') {
+      const matches = message.content.matchAll(/\bhabitaci[oó]n(?:es)?\s+(simple|doble|matrimonial|familiar)\b/gi);
+      const types: Record<string, Room['type']> = {
+        simple: 'Simple', doble: 'Doble', matrimonial: 'Matrimonial', familiar: 'Familiar'
+      };
+      for (const match of matches) {
+        const type = types[match[1].toLowerCase()];
+        if (type && !roomTypes.includes(type)) roomTypes.push(type);
+      }
+    }
+    return { ...message, parts, roomTypes };
   }
 }
