@@ -5,7 +5,7 @@ import { Room } from '../../models/room.interface';
 import { getRoomImageUrl } from '../../models/room-image';
 import { RoomService } from '../../services/room.service';
 
-type HotspotId = 'bed' | 'bath' | 'patio';
+type HotspotId = 'bed' | 'bath' | 'patio' | 'shower' | 'breakfast' | 'room';
 type SceneId = 'room' | 'bathroom' | 'shower' | 'breakfast' | 'patio';
 
 interface TourHotspot {
@@ -15,6 +15,7 @@ interface TourHotspot {
   left: string;
   yaw: number;
   pitch: number;
+  targetScene?: SceneId;
 }
 
 @Component({
@@ -98,10 +99,10 @@ interface TourHotspot {
                 #expandButton
                 class="expand-viewer-button"
                 type="button"
-                aria-label="Abrir panorama 360 grados del patio"
-                title="Abrir panorama 360° del patio"
+                aria-label="Abrir visor en pantalla completa"
+                title="Abrir visor en pantalla completa"
                 (pointerdown)="$event.stopPropagation()"
-                (click)="openPatioPanorama()">
+                (click)="openExpandedViewer()">
                 <svg aria-hidden="true" viewBox="0 0 24 24">
                   <path d="M12 5v14M5 12h14" />
                 </svg>
@@ -131,7 +132,7 @@ interface TourHotspot {
                   type="button"
                   [style.top]="hotspotPosition(hotspot).top"
                   [style.left]="hotspotPosition(hotspot).left"
-                  [attr.aria-label]="'Ver información: ' + hotspot.label"
+                  [attr.aria-label]="hotspot.targetScene ? 'Teletransportarse a ' + hotspot.label : 'Ver información: ' + hotspot.label"
                   [attr.aria-pressed]="activeHotspotId === hotspot.id"
                   (pointerdown)="$event.stopPropagation()"
                   (click)="showHotspot(hotspot.id)">
@@ -150,19 +151,26 @@ interface TourHotspot {
                 <button class="tour-button tilt-control" type="button" aria-label="Inclinar vista hacia abajo" (click)="tilt(-10)">↓ Mirar abajo</button>
               </ng-container>
             </div>
-            <p class="gesture-hint">Arrastra para mirar alrededor y usa la rueda del mouse para acercar o alejar. En móvil, desliza con un dedo. Con teclado, usa ← / → para girar y ↑ / ↓ para inclinar.</p>
+            <p class="gesture-hint">Arrastra para mirar alrededor y usa la rueda del mouse para acercar o alejar. En móvil, desliza con un dedo. Con teclado, usa ← / → para girar y ↑ / ↓ para inclinar. Pulsa los botones «+» para teletransportarte entre ambientes en 360°.</p>
             <p *ngIf="viewerNotice" class="panorama-error" role="status">{{ viewerNotice }}</p>
             <p *ngIf="panoramaError" class="panorama-error" role="status">{{ panoramaError }} Se muestra la fotografía ilustrativa como alternativa.</p>
           </div>
 
           <aside class="hotspot-details" aria-live="polite" aria-atomic="true">
-            <p class="eyebrow">Punto de interés</p>
+            <p class="eyebrow">Punto de interés / Ambiente</p>
             <h2>{{ activeHotspotTitle }}</h2>
             <p>{{ activeHotspotDescription }}</p>
-            <figure *ngIf="activeHotspotId === 'patio'">
+            <figure *ngIf="activeSceneId === 'patio' || activeHotspotId === 'patio'">
               <img src="/assets/images/Vista-Comedorvista%202.jpg" alt="Patio y áreas comunes del hostal; el catálogo no indica que la habitación tenga vista directa al patio" loading="lazy">
               <figcaption>Área común del hostal. No se garantiza vista directa desde la habitación.</figcaption>
             </figure>
+            <button
+              *ngIf="activeSceneId !== 'room'"
+              type="button"
+              class="tour-button return-to-room-btn"
+              (click)="selectScene('room')">
+              ← Volver al dormitorio en 360°
+            </button>
             <a class="primary-button reserve-room" data-direct-booking-navigation [routerLink]="['/reserva']" [queryParams]="{ roomId: room._id }">
               Reservar esta habitación ahora
             </a>
@@ -217,6 +225,8 @@ interface TourHotspot {
     .hotspot-details figure img { display:block; width:100%; max-width:100%; height:auto; border-radius:6px; }
     .hotspot-details figcaption { margin-top:7px; color:#59635d; font-size:12px; line-height:1.5; }
     .reserve-room { width:100%; text-align:center; }
+    .return-to-room-btn { width:100%; margin-bottom:12px; background:#e9f0e9; color:#183b32; font-weight:700; border:2px solid #183b32; }
+    .return-to-room-btn:hover { background:#d4e3d5; }
     @media(max-width:767px) {
       .tour-hero { padding-block:26px; }
       .tour-content { padding-bottom:24px; }
@@ -252,8 +262,11 @@ export class TourArComponent implements OnInit, OnDestroy {
   }
 
   readonly hotspots: TourHotspot[] = [
-    { id: 'bath', label: 'Baño', top: '38%', left: '58%', yaw: 28, pitch: 8 },
-    { id: 'patio', label: 'Patio', top: '55%', left: '80%', yaw: 62, pitch: -7 }
+    { id: 'bath', label: 'Baño', top: '38%', left: '58%', yaw: 28, pitch: 8, targetScene: 'bathroom' },
+    { id: 'shower', label: 'Ducha', top: '42%', left: '72%', yaw: 92, pitch: 4, targetScene: 'shower' },
+    { id: 'breakfast', label: 'Desayuno', top: '48%', left: '18%', yaw: 145, pitch: -3, targetScene: 'breakfast' },
+    { id: 'room', label: 'Habitación', top: '62%', left: '50%', yaw: 180, pitch: -8, targetScene: 'room' },
+    { id: 'patio', label: 'Patio', top: '55%', left: '80%', yaw: 62, pitch: -7, targetScene: 'patio' }
   ];
 
   readonly scenes: { id: SceneId; label: string }[] = [
@@ -358,6 +371,12 @@ export class TourArComponent implements OnInit, OnDestroy {
         return 'El catálogo del hostal indica que esta habitación cuenta con baño privado y agua caliente las 24 horas.';
       case 'patio':
         return 'El hostal cuenta con patio y áreas comunes. La información disponible no confirma que esta habitación tenga una vista directa al patio.';
+      case 'shower':
+        return 'Esta área corresponde a la ducha y al baño del hostal.';
+      case 'breakfast':
+        return 'Esta área panorámica muestra el comedor o espacio utilizado para el desayuno.';
+      case 'room':
+        return 'Vuelve a la vista panorámica del dormitorio de esta habitación.';
     }
   }
 
@@ -407,7 +426,11 @@ export class TourArComponent implements OnInit, OnDestroy {
     this.activeSceneId = sceneId;
     this.angle = 0;
     this.verticalAngle = 0;
-    this.activeHotspotId = 'bed';
+    this.activeHotspotId = sceneId === 'room'
+      ? 'bed'
+      : sceneId === 'bathroom'
+        ? 'bath'
+        : sceneId;
     this.loadPanorama();
   }
 
@@ -477,6 +500,8 @@ export class TourArComponent implements OnInit, OnDestroy {
 
   showHotspot(id: HotspotId): void {
     this.activeHotspotId = id;
+    const hotspot = this.hotspots.find((item) => item.id === id);
+    if (hotspot?.targetScene) this.selectScene(hotspot.targetScene);
   }
 
   startDrag(event: PointerEvent): void {
