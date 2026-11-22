@@ -77,7 +77,7 @@ type RecognitionConstructor = new () => BrowserSpeechRecognition;
             <div class="message-content">
               <div class="message-bubble" [class.user-message]="message.role === 'user'" [class.bot-message]="message.role === 'assistant'">
                 <ng-container *ngFor="let part of message.parts"><strong *ngIf="part.bold">{{ part.text }}</strong><ng-container *ngIf="!part.bold">{{ part.text }}</ng-container></ng-container>
-                <span *ngIf="message.failed" class="failed-message">No se envió. Puedes volver a intentarlo.</span>
+                <span *ngIf="message.failed" class="failed-message">No se pudo confirmar la respuesta.</span>
               </div>
               <button *ngIf="message.role === 'assistant' && speechSupported" type="button" class="listen-button" [disabled]="isListening" (click)="toggleSpeech(message)">
                 {{ speakingMessage === message ? '■ Detener audio' : '▶ Escuchar respuesta' }}
@@ -113,6 +113,7 @@ type RecognitionConstructor = new () => BrowserSpeechRecognition;
         </div>
 
         <p *ngIf="errorMessage" class="chat-error" role="alert">{{ errorMessage }}</p>
+        <p *ngIf="isSending && isTakingLong" class="voice-status" role="status">La respuesta está tardando más de lo habitual. Seguimos esperando; evita enviar el mensaje otra vez.</p>
         <p *ngIf="voiceMessage" class="voice-status" role="status">{{ voiceMessage }}</p>
 
         <form class="chat-composer" (submit)="$event.preventDefault(); sendMessage()">
@@ -242,6 +243,7 @@ export class ChatboxComponent implements OnInit, AfterViewChecked, OnDestroy {
 
   isOpen = false;
   isSending = false;
+  isTakingLong = false;
   isLoadingHistory = false;
   sessionId = '';
   draft = '';
@@ -261,6 +263,7 @@ export class ChatboxComponent implements OnInit, AfterViewChecked, OnDestroy {
   private catalogRequested = false;
   private shouldScrollToBottom = false;
   private historyRequestId = 0;
+  private slowResponseTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     private readonly chatService: ChatService,
@@ -319,10 +322,16 @@ export class ChatboxComponent implements OnInit, AfterViewChecked, OnDestroy {
       this.messages.push(this.toDisplayMessage({ role: 'user', content }));
     }
     this.isSending = true;
+    this.isTakingLong = false;
+    this.slowResponseTimer = setTimeout(() => {
+      this.isTakingLong = true;
+      this.changeDetector.markForCheck();
+    }, 12000);
     this.shouldScrollToBottom = true;
 
     this.chatService.sendMessage(this.sessionId, content).subscribe({
       next: (reply) => {
+        this.clearSlowResponseTimer();
         this.messages.push(this.toDisplayMessage({ role: 'assistant', content: reply }));
         this.draft = '';
         this.isSending = false;
@@ -330,12 +339,13 @@ export class ChatboxComponent implements OnInit, AfterViewChecked, OnDestroy {
         this.changeDetector.markForCheck();
       },
       error: (error: unknown) => {
+        this.clearSlowResponseTimer();
         console.error('No se pudo enviar el mensaje al chat.', error);
         const lastMessage = this.messages[this.messages.length - 1];
         if (lastMessage?.role === 'user' && lastMessage.content === content) lastMessage.failed = true;
         this.draft = content;
         this.isSending = false;
-        this.errorMessage = 'No pudimos enviar tu mensaje. Revisa tu conexión e inténtalo de nuevo.';
+        this.errorMessage = 'No recibimos confirmación. Revisa tu conexión y recarga para comprobar el historial antes de enviar el mensaje otra vez.';
         this.shouldScrollToBottom = true;
         this.changeDetector.markForCheck();
       }
@@ -357,8 +367,15 @@ export class ChatboxComponent implements OnInit, AfterViewChecked, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.clearSlowResponseTimer();
     this.cancelRecognition();
     this.stopSpeech();
+  }
+
+  private clearSlowResponseTimer(): void {
+    if (this.slowResponseTimer !== null) clearTimeout(this.slowResponseTimer);
+    this.slowResponseTimer = null;
+    this.isTakingLong = false;
   }
 
   toggleRecognition(): void {
