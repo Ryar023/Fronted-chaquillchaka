@@ -73,6 +73,13 @@ app-accessibility-speech button[aria-pressed="true"] { background: #183b32; colo
 app-accessibility-speech button:disabled { opacity: .55; cursor: not-allowed; }
 body.a11y-highlight-links a { color: #121212 !important; background: #ffeb3b !important; text-decoration: underline 3px !important; text-underline-offset: 3px; }
 body.a11y-highlight-links a span { color: #121212 !important; background: transparent !important; }
+html.a11y-highlight-focus :is(a,button,input,select,textarea,[tabindex]):not(main):focus-visible {
+  color: #121212 !important; background-color: #ffeb3b !important; outline: 3px solid #121212 !important;
+  outline-offset: 3px; box-shadow: 0 0 0 6px #ffeb3b !important; accent-color: #ffeb3b;
+}
+html.a11y-highlight-focus :is(a,button,input,select,textarea,[tabindex]):not(main):focus-visible :is(span,strong,small,svg) {
+  color: #121212 !important; background-color: transparent !important;
+}
 body.a11y-text-spacing :is(p,h1,h2,h3,h4,h5,h6,li,label,legend,button,a,input,select,textarea,small,dt,dd,th,td) { line-height: 1.5 !important; letter-spacing: .12em !important; word-spacing: .16em !important; }
 body.a11y-accessible-font, body.a11y-accessible-font :is(h1,h2,h3,h4,h5,h6,p,button,a,input,select,textarea,span,label,li,dt,dd,th,td) { font-family: Arial, Verdana, sans-serif !important; }
 .page-shell { width: min(1160px, calc(100% - 40px)); margin-inline: auto; }

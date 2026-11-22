@@ -41,6 +41,9 @@ import { AccessibilitySpeechComponent } from './accessibility-speech.component';
         <button class="accessibility-option" type="button" [attr.aria-pressed]="highlightLinks" (click)="toggleHighlightLinks()">
           Resaltar enlaces: {{ highlightLinks ? 'activado' : 'desactivado' }}
         </button>
+        <button class="accessibility-option" type="button" [attr.aria-pressed]="highlightFocus" (click)="toggleHighlightFocus()">
+          Resaltar foco con Tab en amarillo: {{ highlightFocus ? 'activado' : 'desactivado' }}
+        </button>
         <button class="accessibility-option" type="button" [attr.aria-pressed]="textSpacing" (click)="toggleTextSpacing()">
           Espaciado de texto: {{ textSpacing ? 'activado' : 'desactivado' }}
         </button>
@@ -140,6 +143,7 @@ export class AppComponent implements OnInit {
   reducedMotion = false;
   distinguishStates = false;
   highlightLinks = false;
+  highlightFocus = false;
   textSpacing = false;
   accessibleFont = false;
   storageError = '';
@@ -165,6 +169,7 @@ export class AppComponent implements OnInit {
       this.reducedMotion = localStorage.getItem('chaquill-a11y-reduced-motion') === 'true';
       this.distinguishStates = localStorage.getItem('chaquill-a11y-distinguish-states') === 'true';
       this.highlightLinks = localStorage.getItem('chaquill-a11y-highlight-links') === 'true';
+      this.highlightFocus = localStorage.getItem('chaquill-a11y-highlight-focus') === 'true';
       this.textSpacing = localStorage.getItem('chaquill-a11y-text-spacing') === 'true';
       this.accessibleFont = localStorage.getItem('chaquill-a11y-accessible-font') === 'true';
     } catch (error) {
@@ -236,6 +241,12 @@ export class AppComponent implements OnInit {
     this.applyAccessibilitySettings();
   }
 
+  toggleHighlightFocus(): void {
+    this.highlightFocus = !this.highlightFocus;
+    this.saveAccessibility();
+    this.applyAccessibilitySettings();
+  }
+
   toggleTextSpacing(): void {
     this.textSpacing = !this.textSpacing;
     this.saveAccessibility();
@@ -254,6 +265,7 @@ export class AppComponent implements OnInit {
     this.reducedMotion = false;
     this.distinguishStates = false;
     this.highlightLinks = false;
+    this.highlightFocus = false;
     this.textSpacing = false;
     this.accessibleFont = false;
     this.speech?.reset();
@@ -268,6 +280,7 @@ export class AppComponent implements OnInit {
       localStorage.setItem('chaquill-a11y-reduced-motion', String(this.reducedMotion));
       localStorage.setItem('chaquill-a11y-distinguish-states', String(this.distinguishStates));
       localStorage.setItem('chaquill-a11y-highlight-links', String(this.highlightLinks));
+      localStorage.setItem('chaquill-a11y-highlight-focus', String(this.highlightFocus));
       localStorage.setItem('chaquill-a11y-text-spacing', String(this.textSpacing));
       localStorage.setItem('chaquill-a11y-accessible-font', String(this.accessibleFont));
       this.storageError = '';
@@ -291,6 +304,7 @@ export class AppComponent implements OnInit {
     root.classList.toggle('a11y-high-contrast', this.highContrast);
     root.classList.toggle('a11y-reduced-motion', this.reducedMotion);
     root.classList.toggle('a11y-distinguish-states', this.distinguishStates);
+    root.classList.toggle('a11y-highlight-focus', this.highlightFocus);
     document.body.classList.toggle('a11y-highlight-links', this.highlightLinks);
     document.body.classList.toggle('a11y-text-spacing', this.textSpacing);
     document.body.classList.toggle('a11y-accessible-font', this.accessibleFont);
