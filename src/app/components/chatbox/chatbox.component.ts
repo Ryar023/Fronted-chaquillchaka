@@ -145,6 +145,7 @@ type RecognitionConstructor = new () => BrowserSpeechRecognition;
         [attr.aria-expanded]="isOpen"
         aria-controls="chat-panel"
         [attr.aria-label]="isOpen ? 'Cerrar chat de atención' : 'Abrir chat de atención'"
+        [attr.title]="isOpen ? 'Cerrar chat' : 'Abrir chat'"
         (click)="toggleChat()">
         <svg *ngIf="!isOpen" aria-hidden="true" viewBox="0 0 24 24"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5 8 8 0 0 1-3.1-.62L4 20l1.57-4.1A7.47 7.47 0 0 1 5 12a7.5 7.5 0 0 1 15-.5Z"/><path d="M8 11h8M8 14h5"/></svg>
         <svg *ngIf="isOpen" aria-hidden="true" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg>
@@ -153,11 +154,11 @@ type RecognitionConstructor = new () => BrowserSpeechRecognition;
   `,
   styles: [`
     :host { position:relative; z-index:31; }
-    .chatbox { position:fixed; right:22px; bottom:150px; z-index:31; }
-    .chat-toggle { display:grid; width:60px; height:60px; place-items:center; border:2px solid #fff; border-radius:50%; background:var(--forest,#183b32); color:#fff; box-shadow:0 6px 22px #15291f45; cursor:pointer; transition:transform .18s ease,background .18s ease; }
+    .chatbox { position:fixed; right:88px; bottom:16px; z-index:31; }
+    .chat-toggle { display:grid; width:56px; height:56px; place-items:center; border:2px solid #fff; border-radius:50%; background:var(--forest,#183b32); color:#fff; box-shadow:0 6px 22px #15291f45; cursor:pointer; transition:transform .18s ease,background .18s ease; }
     .chat-toggle:hover { transform:translateY(-2px); background:#245447; }
     .chat-toggle svg { width:27px; height:27px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
-    .chat-panel { position:absolute; right:0; bottom:calc(100% + 14px); display:flex; width:min(390px,calc(100vw - 28px)); height:min(590px,calc(100dvh - 230px)); min-height:340px; flex-direction:column; overflow:hidden; border:1px solid #dfe5dc; border-radius:16px; background:#fff; box-shadow:0 18px 55px #14231f30; }
+    .chat-panel { position:absolute; right:-72px; bottom:calc(100% + 14px); display:flex; width:min(390px,calc(100vw - 28px)); height:min(590px,calc(100dvh - 102px)); flex-direction:column; overflow:hidden; border:1px solid #dfe5dc; border-radius:16px; background:#fff; box-shadow:0 18px 55px #14231f30; }
     .chat-header { display:flex; min-height:76px; align-items:center; justify-content:space-between; gap:10px; background:var(--forest,#183b32); padding:12px 14px; color:#fff; }
     .chat-heading { display:flex; min-width:0; align-items:center; gap:10px; }
     .chat-avatar { display:grid; width:40px; height:40px; flex:none; place-items:center; border:1px solid #ffffff80; border-radius:50%; background:#ffffff1a; }
@@ -220,8 +221,8 @@ type RecognitionConstructor = new () => BrowserSpeechRecognition;
     .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
     @keyframes typing-bounce { 0%,60%,100% { transform:translateY(0); opacity:.55; } 30% { transform:translateY(-4px); opacity:1; } }
     @media(max-width:767px) {
-      .chatbox { right:14px; bottom:calc(146px + env(safe-area-inset-bottom)); }
-      .chat-panel { height:min(590px,calc(100dvh - 228px - env(safe-area-inset-bottom))); }
+      .chatbox { right:14px; bottom:calc(82px + env(safe-area-inset-bottom)); }
+      .chat-panel { right:0; width:min(390px,calc(100vw - 44px)); height:min(590px,calc(100dvh - 168px - env(safe-area-inset-bottom))); }
     }
     @media(max-width:370px) {
       .chat-header { padding-inline:10px; }
